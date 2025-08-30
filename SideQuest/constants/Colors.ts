@@ -31,6 +31,7 @@ export const Colors = {
   questSelected: "#E8F5E8",
   questCompleted: "#D4EDDA",
   questSkipped: "#F8D7DA",
+  questExpired: "#F5F5F5",
 
   // Category colors
   fitness: "#FF6B6B",
@@ -39,4 +40,10 @@ export const Colors = {
   chores: "#96CEB4",
   hobbies: "#FFEAA7",
   outdoors: "#DDA0DD",
+  learning: "#9B59B6",
+  creativity: "#E67E22",
+
+  // Tag colors
+  tagBackground: "#F0F0F0",
+  tagText: "#666666",
 };

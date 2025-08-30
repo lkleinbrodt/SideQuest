@@ -1,190 +1,214 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import React, { useState } from "react";
+import { Quest, QuestFeedback } from "@/types/quest";
+import React, { useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { Button } from "@/components/common/Button";
-import { Card } from "@/components/common/Card";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
+import { QuestCard } from "@/components/quests/QuestCard";
+import { useQuest } from "@/context/QuestContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-interface Quest {
-  id: string;
-  text: string;
-  category: string;
-  estimatedTime: string;
-  selected: boolean;
-  completed: boolean;
-}
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
-  const [quests, setQuests] = useState<Quest[]>([
-    {
-      id: "1",
-      text: "Take a 10-minute walk outside and notice 3 things you haven't seen before",
-      category: "outdoors",
-      estimatedTime: "10 min",
-      selected: false,
-      completed: false,
-    },
-    {
-      id: "2",
-      text: "Text a friend you haven't talked to in a while with a fun question",
-      category: "social",
-      estimatedTime: "5 min",
-      selected: false,
-      completed: false,
-    },
-    {
-      id: "3",
-      text: "Try a new recipe with ingredients you already have at home",
-      category: "hobbies",
-      estimatedTime: "15 min",
-      selected: false,
-      completed: false,
-    },
-  ]);
+  const {
+    state,
+    generateDailyQuests,
+    selectQuest,
+    deselectQuest,
+    completeQuest,
+    skipQuest,
+    refreshQuests,
+  } = useQuest();
 
-  const toggleQuestSelection = (questId: string) => {
-    setQuests((prevQuests) =>
-      prevQuests.map((quest) =>
-        quest.id === questId ? { ...quest, selected: !quest.selected } : quest
-      )
-    );
-  };
+  const [refreshing, setRefreshing] = useState(false);
 
-  const markQuestComplete = (questId: string) => {
-    setQuests((prevQuests) =>
-      prevQuests.map((quest) =>
-        quest.id === questId ? { ...quest, completed: true } : quest
-      )
-    );
-  };
+  // Load quests on component mount
+  useEffect(() => {
+    console.log("Today screen mounted, checking quests...");
+    if (state.todayQuests.length === 0) {
+      console.log("No quests found, generating...");
+      generateDailyQuests();
+    } else {
+      console.log(`Found ${state.todayQuests.length} existing quests`);
+    }
+  }, []);
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "fitness":
-        return Colors.fitness;
-      case "social":
-        return Colors.social;
-      case "mindfulness":
-        return Colors.mindfulness;
-      case "chores":
-        return Colors.chores;
-      case "hobbies":
-        return Colors.hobbies;
-      case "outdoors":
-        return Colors.outdoors;
-      default:
-        return Colors.secondary;
+  // Handle quest selection
+  const handleQuestSelect = (questId: string) => {
+    const quest = state.todayQuests.find((q) => q.id === questId);
+    if (quest?.selected) {
+      deselectQuest(questId);
+    } else {
+      selectQuest(questId);
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "fitness":
-        return "fitness";
-      case "social":
-        return "people";
-      case "mindfulness":
-        return "leaf";
-      case "chores":
-        return "home";
-      case "hobbies":
-        return "brush";
-      case "outdoors":
-        return "sunny";
-      default:
-        return "star";
+  // Handle quest completion
+  const handleQuestComplete = async (questId: string) => {
+    // This will be called by QuestCard with feedback
+  };
+
+  // Handle quest skip
+  const handleQuestSkip = async (questId: string) => {
+    // This will be called by QuestCard with feedback
+  };
+
+  // Handle quest feedback
+  const handleQuestFeedback = async (
+    questId: string,
+    feedback: QuestFeedback
+  ) => {
+    if (feedback.completed) {
+      await completeQuest(questId, feedback);
+    } else {
+      await skipQuest(questId, feedback);
     }
   };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshQuests();
+    setRefreshing(false);
+  };
+
+  // Check if it's a new day and we need fresh quests
+  const shouldRefreshQuests = () => {
+    if (!state.lastUpdated) return true;
+
+    const now = new Date();
+    const lastUpdate = new Date(state.lastUpdated);
+    const diffTime = Math.abs(now.getTime() - lastUpdate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 1000)); // Convert to days
+
+    return diffDays >= 1;
+  };
+
+  // Auto-refresh quests if it's a new day - only run once on mount
+  useEffect(() => {
+    const checkAndRefresh = async () => {
+      if (shouldRefreshQuests()) {
+        await generateDailyQuests();
+      }
+    };
+
+    checkAndRefresh();
+  }, []); // Empty dependency array - only run on mount
+
+  const getStatsText = () => {
+    const selected = state.selectedQuests.length;
+    const total = state.todayQuests.length;
+    const completed = state.completedQuests.length;
+    const skipped = state.skippedQuests.length;
+
+    if (total === 0) return "No quests available";
+    if (completed === total) return "All quests completed! 🎉";
+    if (skipped === total) return "All quests skipped";
+
+    let text = `${selected} of ${total} quests selected`;
+    if (completed > 0) text += ` • ${completed} completed`;
+    if (skipped > 0) text += ` • ${skipped} skipped`;
+
+    return text;
+  };
+
+  const getMotivationalText = () => {
+    const completed = state.completedQuests.length;
+    const total = state.todayQuests.length;
+
+    if (total === 0) return "Ready for today's adventures?";
+    if (completed === 0) return "Choose your quests and start your journey!";
+    if (completed === total)
+      return "Incredible! You've completed all your quests!";
+    if (completed >= total / 2) return "Great progress! Keep going!";
+    return "Every quest completed is a step forward!";
+  };
+
+  if (state.isLoading && state.todayQuests.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="refresh" size={48} color={Colors.primary} />
+          <Text style={styles.loadingText}>
+            Generating your daily quests...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (state.error && state.todayQuests.length === 0) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color={Colors.error} />
+          <Text style={styles.errorText}>Something went wrong</Text>
+          <Text style={styles.errorSubtext}>{state.error}</Text>
+          <Text style={styles.retryText} onPress={generateDailyQuests}>
+            Tap to retry
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
         <View style={styles.header}>
           <Text style={styles.title}>Today's Quests</Text>
-          <Text style={styles.subtitle}>Choose your adventures for today</Text>
+          <Text style={styles.subtitle}>{getMotivationalText()}</Text>
+
+          {state.lastUpdated && (
+            <Text style={styles.lastUpdated}>
+              Last updated:{" "}
+              {state.lastUpdated.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          )}
         </View>
 
         <View style={styles.questsContainer}>
-          {quests.map((quest) => (
-            <Card
-              key={quest.id}
-              variant="elevated"
-              style={[
-                styles.questCard,
-                quest.selected && styles.selectedQuest,
-                quest.completed && styles.completedQuest,
-              ]}
-            >
-              <View style={styles.questHeader}>
-                <View style={styles.categoryContainer}>
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      { backgroundColor: getCategoryColor(quest.category) },
-                    ]}
-                  >
-                    <Ionicons
-                      name={getCategoryIcon(quest.category) as any}
-                      size={16}
-                      color={Colors.white}
-                    />
-                  </View>
-                  <Text style={styles.categoryText}>
-                    {quest.category.charAt(0).toUpperCase() +
-                      quest.category.slice(1)}
-                  </Text>
-                </View>
-                <Text style={styles.estimatedTime}>{quest.estimatedTime}</Text>
-              </View>
-
-              <Text style={styles.questText}>{quest.text}</Text>
-
-              <View style={styles.questActions}>
-                <Button
-                  title={quest.selected ? "Selected" : "Select"}
-                  onPress={() => toggleQuestSelection(quest.id)}
-                  variant={quest.selected ? "primary" : "outline"}
-                  size="small"
-                  style={styles.actionButton}
-                />
-
-                {quest.selected && !quest.completed && (
-                  <Button
-                    title="Complete"
-                    onPress={() => markQuestComplete(quest.id)}
-                    variant="success"
-                    size="small"
-                    style={styles.actionButton}
-                  />
-                )}
-
-                {quest.completed && (
-                  <View style={styles.completedBadge}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={Colors.success}
-                    />
-                    <Text style={styles.completedText}>Completed!</Text>
-                  </View>
-                )}
-              </View>
-            </Card>
-          ))}
+          {state.todayQuests.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="compass" size={48} color={Colors.mutedText} />
+              <Text style={styles.emptyText}>No quests available</Text>
+              <Text style={styles.emptySubtext}>
+                Pull down to refresh or check back later
+              </Text>
+            </View>
+          ) : (
+            state.todayQuests.map((quest) => (
+              <QuestCard
+                key={quest.id}
+                quest={quest}
+                onSelect={handleQuestSelect}
+                onComplete={handleQuestComplete}
+                onSkip={handleQuestSkip}
+                onFeedback={handleQuestFeedback}
+                showActions={true}
+              />
+            ))
+          )}
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {quests.filter((q) => q.selected).length} of {quests.length} quests
-            selected
-          </Text>
+          <Text style={styles.footerText}>{getStatsText()}</Text>
         </View>
       </ScrollView>
     </View>
@@ -213,76 +237,70 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.mutedText,
     textAlign: "center",
+    marginBottom: Layout.spacing.s,
+  },
+  lastUpdated: {
+    fontSize: 12,
+    color: Colors.mutedText,
+    textAlign: "center",
   },
   questsContainer: {
     paddingHorizontal: Layout.spacing.m,
   },
-  questCard: {
-    marginBottom: Layout.spacing.m,
-    padding: Layout.spacing.l,
-  },
-  selectedQuest: {
-    borderColor: Colors.success,
-    borderWidth: 2,
-  },
-  completedQuest: {
-    backgroundColor: Colors.questCompleted,
-  },
-  questHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Layout.spacing.m,
-  },
-  categoryContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  categoryBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
-    marginRight: Layout.spacing.xs,
+    alignItems: "center",
+    padding: Layout.spacing.xl,
   },
-  categoryText: {
-    fontSize: 14,
+  loadingText: {
+    fontSize: 18,
+    color: Colors.mutedText,
+    marginTop: Layout.spacing.m,
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Layout.spacing.xl,
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: Colors.error,
+    marginTop: Layout.spacing.m,
+    textAlign: "center",
+  },
+  errorSubtext: {
+    fontSize: 16,
+    color: Colors.mutedText,
+    marginTop: Layout.spacing.xs,
+    textAlign: "center",
+  },
+  retryText: {
+    fontSize: 16,
+    color: Colors.primary,
+    marginTop: Layout.spacing.m,
+    textAlign: "center",
+    textDecorationLine: "underline",
+  },
+  emptyContainer: {
+    padding: Layout.spacing.xl,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 18,
     fontWeight: "600",
     color: Colors.mutedText,
-    textTransform: "capitalize",
+    marginTop: Layout.spacing.m,
+    textAlign: "center",
   },
-  estimatedTime: {
+  emptySubtext: {
     fontSize: 14,
-    color: Colors.secondary,
-    fontWeight: "500",
-  },
-  questText: {
-    fontSize: 16,
-    color: Colors.darkText,
-    lineHeight: 24,
-    marginBottom: Layout.spacing.l,
-  },
-  questActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: Layout.spacing.xs,
-  },
-  completedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  completedText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: Colors.success,
-    marginLeft: Layout.spacing.xs,
+    color: Colors.mutedText,
+    marginTop: Layout.spacing.xs,
+    textAlign: "center",
   },
   footer: {
     padding: Layout.spacing.l,

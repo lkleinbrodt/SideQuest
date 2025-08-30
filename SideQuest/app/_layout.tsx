@@ -4,6 +4,8 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "@/auth/AuthContext";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { OnboardingProvider } from "@/context/OnboardingContext";
+import { QuestProvider } from "@/context/QuestContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { useColorScheme } from "@/components/useColorScheme";
@@ -53,10 +55,14 @@ function RootLayoutNav() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
+        <QuestProvider>
+          <OnboardingProvider>
+            <Stack>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </OnboardingProvider>
+        </QuestProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

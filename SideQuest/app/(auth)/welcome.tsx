@@ -1,11 +1,12 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 
 import { Image, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useEffect } from "react";
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
-import React from "react";
 import { StatusBar } from "expo-status-bar";
+import { preferencesService } from "@/api/services/preferencesService";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +15,23 @@ export default function WelcomeScreen() {
   const { signIn } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const isComplete = await preferencesService.isOnboardingComplete();
+        if (isComplete) {
+          // User has completed onboarding, redirect to main app
+          router.replace("/(tabs)");
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [router]);
 
   const handleSignIn = async () => {
     try {
@@ -28,7 +46,15 @@ export default function WelcomeScreen() {
       };
 
       await signIn(mockToken, mockUser);
-      router.replace("/(tabs)");
+
+      // Check if user needs to complete onboarding
+      const isOnboardingComplete =
+        await preferencesService.isOnboardingComplete();
+      if (isOnboardingComplete) {
+        router.replace("/(tabs)");
+      } else {
+        router.replace("/onboarding");
+      }
     } catch (error) {
       console.error("Sign in error:", error);
     }

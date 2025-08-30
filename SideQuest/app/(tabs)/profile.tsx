@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -14,11 +15,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import React from "react";
 import { useAuth } from "@/auth/AuthContext";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
+  const router = useRouter();
 
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [dailyReminder, setDailyReminder] = React.useState(true);
@@ -141,11 +144,14 @@ export default function ProfileScreen() {
               <Text style={styles.sectionTitle}>Preferences</Text>
             </View>
 
-            <View style={styles.settingItem}>
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => router.push("/settings")}
+            >
               <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Quest Categories</Text>
+                <Text style={styles.settingLabel}>Advanced Settings</Text>
                 <Text style={styles.settingDescription}>
-                  Manage which types of quests you prefer
+                  Manage all your quest preferences and app settings
                 </Text>
               </View>
               <Ionicons
@@ -153,35 +159,7 @@ export default function ProfileScreen() {
                 size={20}
                 color={Colors.mutedText}
               />
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Time Preferences</Text>
-                <Text style={styles.settingDescription}>
-                  Set your preferred quest timing
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Difficulty Level</Text>
-                <Text style={styles.settingDescription}>
-                  Adjust quest complexity
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </View>
+            </TouchableOpacity>
           </Card>
 
           {/* Data Section */}
