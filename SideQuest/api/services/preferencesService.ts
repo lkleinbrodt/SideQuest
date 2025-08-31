@@ -328,6 +328,7 @@ class PreferencesService {
    */
   async getQuestPreferences(): Promise<QuestPreferences> {
     const preferences = await this.getUserPreferences();
+    console.log("Getting quest preferences:", preferences);
     return {
       categories: preferences.categories,
       difficulty: preferences.difficulty,

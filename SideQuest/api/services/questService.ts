@@ -57,6 +57,7 @@ class QuestService {
    * Generate daily quests based on user preferences
    */
   async generateDailyQuests(preferences: QuestPreferences): Promise<Quest[]> {
+    console.log("Generating daily quests with preferences:", preferences);
     try {
       const request: QuestGenerationRequest = {
         preferences: this.convertPreferencesToBackend(preferences),

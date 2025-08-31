@@ -210,6 +210,7 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
 
       console.log("Generating daily quests...");
       const preferences = await preferencesService.getQuestPreferences();
+      console.log("Preferences:", preferences);
       const quests = await questService.generateDailyQuests(preferences);
 
       console.log(`Generated ${quests.length} quests`);
