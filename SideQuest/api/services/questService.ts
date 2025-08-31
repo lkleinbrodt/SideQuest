@@ -11,6 +11,23 @@ import { ENDPOINTS } from "../config";
 import { FALLBACK_QUESTS } from "@/utils/fallbackQuests";
 import { apiClient } from "../client";
 
+// Backend quest format (with string dates)
+interface BackendQuest {
+  id: string;
+  text: string;
+  category: string;
+  estimatedTime: string;
+  difficulty: string;
+  tags: string[];
+  selected: boolean;
+  completed: boolean;
+  skipped: boolean;
+  completedAt?: string;
+  feedback?: any;
+  createdAt: string;
+  expiresAt: string;
+}
+
 // Fallback quest pool for when API is unavailable
 
 class QuestService {
@@ -54,10 +71,47 @@ class QuestService {
   }
 
   /**
+   * Get available quests (existing open quests or generate new ones)
+   */
+  async getAvailableQuests(preferences: QuestPreferences): Promise<Quest[]> {
+    console.log("Getting available quests with preferences:", preferences);
+
+    try {
+      // First try to get existing available quests
+      const response = await apiClient.get<QuestGenerationResponse>(
+        ENDPOINTS.AVAILABLE_QUESTS
+      );
+
+      if (response.ok && response.data?.success && response.data.data?.quests) {
+        const quests = response.data.data.quests as unknown as BackendQuest[];
+        console.log(`Found ${quests.length} existing available quests`);
+        // Convert date strings to Date objects for frontend compatibility
+        return quests.map((quest) => ({
+          ...quest,
+          completedAt: quest.completedAt
+            ? new Date(quest.completedAt)
+            : undefined,
+          createdAt: new Date(quest.createdAt),
+          expiresAt: new Date(quest.expiresAt),
+        })) as Quest[];
+      }
+
+      // If no existing quests, generate new ones
+      console.log("No existing quests found, generating new ones");
+      return this.generateDailyQuests(preferences);
+    } catch (error) {
+      console.error("Error getting available quests:", error);
+      // Fallback to generating new quests
+      return this.generateDailyQuests(preferences);
+    }
+  }
+
+  /**
    * Generate daily quests based on user preferences
    */
   async generateDailyQuests(preferences: QuestPreferences): Promise<Quest[]> {
     console.log("Generating daily quests with preferences:", preferences);
+
     try {
       const request: QuestGenerationRequest = {
         preferences: this.convertPreferencesToBackend(preferences),
@@ -73,7 +127,16 @@ class QuestService {
       );
 
       if (response.ok && response.data?.success && response.data.data?.quests) {
-        return response.data.data.quests;
+        const quests = response.data.data.quests as unknown as BackendQuest[];
+        // Convert date strings to Date objects for frontend compatibility
+        return quests.map((quest) => ({
+          ...quest,
+          completedAt: quest.completedAt
+            ? new Date(quest.completedAt)
+            : undefined,
+          createdAt: new Date(quest.createdAt),
+          expiresAt: new Date(quest.expiresAt),
+        })) as Quest[];
       }
 
       // Fallback to curated quests if API fails
@@ -168,6 +231,51 @@ class QuestService {
     } catch (error) {
       console.error("Error skipping quest:", error);
       return false;
+    }
+  }
+
+  /**
+   * Refresh quests - mark old ones as skipped and get new ones
+   */
+  async refreshQuests(preferences: QuestPreferences): Promise<Quest[]> {
+    console.log("Refreshing quests with preferences:", preferences);
+
+    try {
+      const request = {
+        preferences: this.convertPreferencesToBackend(preferences),
+        context: {
+          timeOfDay: this.getTimeOfDay(),
+          // Add more context as available
+        },
+      };
+
+      const response = await apiClient.post<QuestGenerationResponse>(
+        ENDPOINTS.REFRESH_QUESTS,
+        request
+      );
+
+      if (response.ok && response.data?.success && response.data.data?.quests) {
+        const quests = response.data.data.quests as unknown as BackendQuest[];
+        console.log(`Refreshed quests, got ${quests.length} new quests`);
+
+        // Convert date strings to Date objects for frontend compatibility
+        return quests.map((quest) => ({
+          ...quest,
+          completedAt: quest.completedAt
+            ? new Date(quest.completedAt)
+            : undefined,
+          createdAt: new Date(quest.createdAt),
+          expiresAt: new Date(quest.expiresAt),
+        })) as Quest[];
+      }
+
+      // Fallback to generating new quests if refresh fails
+      console.log("Refresh failed, falling back to generating new quests");
+      return this.generateDailyQuests(preferences);
+    } catch (error) {
+      console.error("Error refreshing quests:", error);
+      // Fallback to generating new quests
+      return this.generateDailyQuests(preferences);
     }
   }
 

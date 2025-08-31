@@ -59,7 +59,14 @@ function RootLayoutNav() {
           <OnboardingProvider>
             <Stack>
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  headerShown: false,
+                  animation: "fade",
+                  headerBackTitle: "Back",
+                }}
+              />
             </Stack>
           </OnboardingProvider>
         </QuestProvider>

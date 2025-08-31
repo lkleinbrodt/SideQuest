@@ -1,4 +1,11 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Quest, QuestFeedback } from "@/types/quest";
 
 import { Button } from "@/components/common/Button";
@@ -6,8 +13,19 @@ import { Card } from "@/components/common/Card";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
+import { QuestCategory } from "@/types/quest";
 import React from "react";
 
+const categoryImages = {
+  fitness: require("@/assets/category-badges/fitness_1_transparent.png"),
+  social: require("@/assets/category-badges/social_1_transparent.png"),
+  mindfulness: require("@/assets/category-badges/mindfulness_1_transparent.png"),
+  chores: require("@/assets/category-badges/chores_1_transparent.png"),
+  hobbies: require("@/assets/category-badges/hobbies_1_transparent.png"),
+  outdoors: require("@/assets/category-badges/outdoors_1_transparent.png"),
+  learning: require("@/assets/category-badges/learning_1_transparent.png"),
+  creativity: require("@/assets/category-badges/creativity_1_transparent.png"),
+};
 interface QuestCardProps {
   quest: Quest;
   onSelect: (questId: string) => void;
@@ -48,27 +66,8 @@ export const QuestCard: React.FC<QuestCardProps> = ({
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "fitness":
-        return "fitness";
-      case "social":
-        return "people";
-      case "mindfulness":
-        return "leaf";
-      case "chores":
-        return "home";
-      case "hobbies":
-        return "brush";
-      case "outdoors":
-        return "sunny";
-      case "learning":
-        return "school";
-      case "creativity":
-        return "color-palette";
-      default:
-        return "star";
-    }
+  const getCategoryAsset = (category: QuestCategory) => {
+    return categoryImages[category] || categoryImages.fitness;
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -148,55 +147,13 @@ export const QuestCard: React.FC<QuestCardProps> = ({
         isExpired && styles.expired,
       ]}
     >
-      {/* Header with category and difficulty */}
-      <View style={styles.header}>
-        <View style={styles.categoryContainer}>
-          <View
-            style={[
-              styles.categoryBadge,
-              { backgroundColor: getCategoryColor(quest.category) },
-            ]}
-          >
-            <Ionicons
-              name={getCategoryIcon(quest.category) as any}
-              size={16}
-              color={Colors.white}
-            />
-          </View>
-          <Text style={styles.categoryText}>
-            {quest.category.charAt(0).toUpperCase() + quest.category.slice(1)}
-          </Text>
-        </View>
-
-        <View style={styles.metaContainer}>
-          <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: getDifficultyColor(quest.difficulty) },
-            ]}
-          >
-            <Text style={styles.difficultyText}>
-              {quest.difficulty.charAt(0).toUpperCase() +
-                quest.difficulty.slice(1)}
-            </Text>
-          </View>
-          <Text style={styles.timeText}>{quest.estimatedTime}</Text>
-        </View>
-      </View>
-
+      <Image
+        source={getCategoryAsset(quest.category)}
+        style={styles.categoryIcon}
+        resizeMode="contain"
+      />
       {/* Quest text */}
       <Text style={styles.questText}>{quest.text}</Text>
-
-      {/* Tags */}
-      {quest.tags.length > 0 && (
-        <View style={styles.tagsContainer}>
-          {quest.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
-            </View>
-          ))}
-        </View>
-      )}
 
       {/* Status indicators */}
       <View style={styles.statusContainer}>
@@ -229,27 +186,29 @@ export const QuestCard: React.FC<QuestCardProps> = ({
       {/* Action buttons */}
       {showActions && !quest.completed && !quest.skipped && !isExpired && (
         <View style={styles.actionsContainer}>
-          <Button
-            title={quest.selected ? "Selected" : "Select"}
-            onPress={() => onSelect(quest.id)}
-            variant={quest.selected ? "primary" : "outline"}
-            size="small"
-            style={styles.actionButton}
-          />
+          {!quest.selected && (
+            <Button
+              title={quest.selected ? "Selected" : "Select"}
+              onPress={() => onSelect(quest.id)}
+              variant={quest.selected ? "primary" : "outline"}
+              size="small"
+              style={styles.actionButton}
+            />
+          )}
 
           {quest.selected && (
             <>
               <Button
-                title="Complete"
-                onPress={handleComplete}
-                variant="success"
+                title="Skip"
+                onPress={handleSkip}
+                variant="outline"
                 size="small"
                 style={styles.actionButton}
               />
               <Button
-                title="Skip"
-                onPress={handleSkip}
-                variant="outline"
+                title="Complete"
+                onPress={handleComplete}
+                variant="success"
                 size="small"
                 style={styles.actionButton}
               />
@@ -290,6 +249,8 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   );
 };
 
+const BADGE_SIZE = 128;
+
 const styles = StyleSheet.create({
   container: {
     marginBottom: Layout.spacing.m,
@@ -320,9 +281,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   categoryBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: BADGE_SIZE,
+    height: BADGE_SIZE,
+    borderRadius: BADGE_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Layout.spacing.xs,
@@ -421,5 +382,9 @@ const styles = StyleSheet.create({
     color: Colors.darkText,
     fontStyle: "italic",
     marginLeft: 24,
+  },
+  categoryIcon: {
+    width: BADGE_SIZE,
+    height: BADGE_SIZE,
   },
 });

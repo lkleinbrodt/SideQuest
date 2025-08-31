@@ -24,6 +24,8 @@ export const getApiConfig = () => {
 export const ENDPOINTS = {
   // Quest management
   GENERATE_DAILY: "/sidequest/generate",
+  AVAILABLE_QUESTS: "/sidequest/quests/available",
+  REFRESH_QUESTS: "/sidequest/quests/refresh",
   QUESTS: "/sidequest/quests",
   SELECT_QUEST: "/sidequest/quests/:id/select",
   COMPLETE_QUEST: "/sidequest/quests/:id/complete",

@@ -1,19 +1,25 @@
-import { Quest, QuestFeedback } from "@/types/quest";
-import React, { useEffect, useState } from "react";
 import {
+  Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
 
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import { QuestCard } from "@/components/quests/QuestCard";
+import { QuestFeedback } from "@/types/quest";
 import { useQuest } from "@/context/QuestContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+type TabType = "active" | "potential";
+
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
@@ -28,6 +34,8 @@ export default function TodayScreen() {
   } = useQuest();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("potential");
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Load quests on component mount
   useEffect(() => {
@@ -102,6 +110,22 @@ export default function TodayScreen() {
     checkAndRefresh();
   }, []); // Empty dependency array - only run on mount
 
+  // Handle tab change with scroll
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    const xOffset = tab === "active" ? screenWidth : 0;
+    scrollViewRef.current?.scrollTo({ x: xOffset, animated: true });
+  };
+
+  // Handle scroll end to update active tab
+  const handleScrollEnd = (event: any) => {
+    const xOffset = event.nativeEvent.contentOffset.x;
+    const newTab: TabType = xOffset >= screenWidth / 2 ? "active" : "potential";
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  };
+
   const getStatsText = () => {
     const selected = state.selectedQuests.length;
     const total = state.todayQuests.length;
@@ -117,18 +141,6 @@ export default function TodayScreen() {
     if (skipped > 0) text += ` • ${skipped} skipped`;
 
     return text;
-  };
-
-  const getMotivationalText = () => {
-    const completed = state.completedQuests.length;
-    const total = state.todayQuests.length;
-
-    if (total === 0) return "Ready for today's adventures?";
-    if (completed === 0) return "Choose your quests and start your journey!";
-    if (completed === total)
-      return "Incredible! You've completed all your quests!";
-    if (completed >= total / 2) return "Great progress! Keep going!";
-    return "Every quest completed is a step forward!";
   };
 
   if (state.isLoading && state.todayQuests.length === 0) {
@@ -161,54 +173,155 @@ export default function TodayScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Today's Quests</Text>
-          <Text style={styles.subtitle}>{getMotivationalText()}</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Quest Board</Text>
+      </View>
 
-          {state.lastUpdated && (
-            <Text style={styles.lastUpdated}>
-              Last updated:{" "}
-              {new Date(state.lastUpdated).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "potential" && styles.activeTab]}
+          onPress={() => handleTabChange("potential")}
+        >
+          <Ionicons name="compass" size={20} color={Colors.primary} />
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "potential" && styles.activeTabText,
+            ]}
+          >
+            Potential
+          </Text>
+          {/* <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>
+              {
+                state.todayQuests.filter(
+                  (q) => !q.selected && !q.completed && !q.skipped
+                ).length
+              }
             </Text>
-          )}
-        </View>
+          </View> */}
+        </TouchableOpacity>
 
-        <View style={styles.questsContainer}>
-          {state.todayQuests.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="compass" size={48} color={Colors.mutedText} />
-              <Text style={styles.emptyText}>No quests available</Text>
-              <Text style={styles.emptySubtext}>
-                Pull down to refresh or check back later
-              </Text>
-            </View>
-          ) : (
-            state.todayQuests.map((quest) => (
-              <QuestCard
-                key={quest.id}
-                quest={quest}
-                onSelect={handleQuestSelect}
-                onComplete={handleQuestComplete}
-                onSkip={handleQuestSkip}
-                onFeedback={handleQuestFeedback}
-                showActions={true}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "active" && styles.activeTab]}
+          onPress={() => handleTabChange("active")}
+        >
+          <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "active" && styles.activeTabText,
+            ]}
+          >
+            Active
+          </Text>
+          {/* <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>
+              {
+                state.todayQuests.filter((q) => q.selected || q.completed)
+                  .length
+              }
+            </Text>
+          </View> */}
+        </TouchableOpacity>
+      </View>
+
+      {/* Swipeable Content */}
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleScrollEnd}
+        style={styles.swipeContainer}
+        contentContainerStyle={styles.swipeContent}
+      >
+        {/* Potential Quests Tab */}
+        <View style={styles.tabContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
               />
-            ))
-          )}
+            }
+          >
+            <View style={styles.questsContainer}>
+              {state.todayQuests.filter(
+                (q) => !q.selected && !q.completed && !q.skipped
+              ).length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="compass" size={48} color={Colors.mutedText} />
+                  <Text style={styles.emptyText}>
+                    No potential quests available
+                  </Text>
+                  <Text style={styles.emptySubtext}>
+                    Pull down to refresh or check back later
+                  </Text>
+                </View>
+              ) : (
+                state.todayQuests
+                  .filter((q) => !q.selected && !q.completed && !q.skipped)
+                  .map((quest) => (
+                    <QuestCard
+                      key={quest.id}
+                      quest={quest}
+                      onSelect={handleQuestSelect}
+                      onComplete={handleQuestComplete}
+                      onSkip={handleQuestSkip}
+                      onFeedback={handleQuestFeedback}
+                      showActions={true}
+                    />
+                  ))
+              )}
+            </View>
+          </ScrollView>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{getStatsText()}</Text>
+        {/* Active Quests Tab */}
+        <View style={styles.tabContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
+          >
+            <View style={styles.questsContainer}>
+              {state.todayQuests.filter((q) => q.selected || q.completed)
+                .length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={48}
+                    color={Colors.mutedText}
+                  />
+                  <Text style={styles.emptyText}>No active quests</Text>
+                  <Text style={styles.emptySubtext}>
+                    Select quests from the potential tab to get started
+                  </Text>
+                </View>
+              ) : (
+                state.todayQuests
+                  .filter((q) => q.selected || q.completed)
+                  .map((quest) => (
+                    <QuestCard
+                      key={quest.id}
+                      quest={quest}
+                      onSelect={handleQuestSelect}
+                      onComplete={handleQuestComplete}
+                      onSkip={handleQuestSkip}
+                      onFeedback={handleQuestFeedback}
+                      showActions={true}
+                    />
+                  ))
+              )}
+            </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -231,7 +344,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: Colors.primary,
-    marginBottom: Layout.spacing.xs,
+    // marginBottom: Layout.spacing.xs,
   },
   subtitle: {
     fontSize: 16,
@@ -310,5 +423,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.mutedText,
     textAlign: "center",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    // backgroundColor: Colors.lightGray,
+    // paddingVertical: Layout.spacing.s,
+    paddingHorizontal: Layout.spacing.m,
+    marginBottom: Layout.spacing.m,
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "50%",
+    justifyContent: "center",
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  activeTab: {
+    borderBottomColor: Colors.primary,
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    marginLeft: Layout.spacing.xs,
+    fontSize: 20,
+    fontWeight: "600",
+    color: Colors.primary,
+  },
+  activeTabText: {
+    color: Colors.primary,
+  },
+  activeTabIcon: {
+    color: Colors.primary,
+  },
+  tabBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: Colors.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeTabBadge: {},
+  tabBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  swipeContainer: {
+    flex: 1,
+  },
+  swipeContent: {
+    width: screenWidth * 2, // Two tabs
+  },
+  tabContent: {
+    width: screenWidth,
   },
 });

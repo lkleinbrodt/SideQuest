@@ -1,16 +1,17 @@
-import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
-import { QuestCard } from '../QuestCard';
-import { Quest } from '@/types/quest';
+import { fireEvent, render } from "@testing-library/react-native";
+
+import { Quest } from "@/types/quest";
+import { QuestCard } from "../QuestCard";
+import React from "react";
 
 // Mock the quest data
 const mockQuest: Quest = {
-  id: '1',
-  text: 'Take a 10-minute walk outside and notice 3 things you haven\'t seen before',
-  category: 'outdoors',
-  estimatedTime: '10 min',
-  difficulty: 'easy',
-  tags: ['nature', 'mindfulness', 'exercise'],
+  id: "1",
+  text: "Take a 10-minute walk outside and notice 3 things you haven't seen before",
+  category: "outdoors",
+  estimatedTime: "10 min",
+  difficulty: "easy",
+  tags: ["nature", "mindfulness", "exercise"],
   selected: false,
   completed: false,
   skipped: false,
@@ -25,138 +26,114 @@ const mockHandlers = {
   onFeedback: jest.fn(),
 };
 
-describe('QuestCard', () => {
+describe("QuestCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders quest information correctly', () => {
+  it("renders quest information correctly", () => {
     const { getByText } = render(
-      <QuestCard
-        quest={mockQuest}
-        {...mockHandlers}
-      />
+      <QuestCard quest={mockQuest} {...mockHandlers} />
     );
 
-    expect(getByText('Take a 10-minute walk outside and notice 3 things you haven\'t seen before')).toBeTruthy();
-    expect(getByText('Outdoors')).toBeTruthy();
-    expect(getByText('Easy')).toBeTruthy();
-    expect(getByText('10 min')).toBeTruthy();
-    expect(getByText('#nature')).toBeTruthy();
-    expect(getByText('#mindfulness')).toBeTruthy();
-    expect(getByText('#exercise')).toBeTruthy();
+    expect(
+      getByText(
+        "Take a 10-minute walk outside and notice 3 things you haven't seen before"
+      )
+    ).toBeTruthy();
+    expect(getByText("Outdoors")).toBeTruthy();
+    expect(getByText("Easy")).toBeTruthy();
+    expect(getByText("10 min")).toBeTruthy();
+    expect(getByText("#nature")).toBeTruthy();
+    expect(getByText("#mindfulness")).toBeTruthy();
+    expect(getByText("#exercise")).toBeTruthy();
   });
 
-  it('shows select button when quest is not selected', () => {
+  it("shows select button when quest is not selected", () => {
     const { getByText } = render(
-      <QuestCard
-        quest={mockQuest}
-        {...mockHandlers}
-      />
+      <QuestCard quest={mockQuest} {...mockHandlers} />
     );
 
-    expect(getByText('Select')).toBeTruthy();
+    expect(getByText("Select")).toBeTruthy();
   });
 
-  it('shows selected state when quest is selected', () => {
+  it("shows selected state when quest is selected", () => {
     const selectedQuest = { ...mockQuest, selected: true };
     const { getByText } = render(
-      <QuestCard
-        quest={selectedQuest}
-        {...mockHandlers}
-      />
+      <QuestCard quest={selectedQuest} {...mockHandlers} />
     );
 
-    expect(getByText('Selected')).toBeTruthy();
-    expect(getByText('Complete')).toBeTruthy();
-    expect(getByText('Skip')).toBeTruthy();
+    expect(getByText("Selected")).toBeTruthy();
+    expect(getByText("Complete")).toBeTruthy();
+    expect(getByText("Skip")).toBeTruthy();
   });
 
-  it('calls onSelect when select button is pressed', () => {
+  it("calls onSelect when select button is pressed", () => {
     const { getByText } = render(
-      <QuestCard
-        quest={mockQuest}
-        {...mockHandlers}
-      />
+      <QuestCard quest={mockQuest} {...mockHandlers} />
     );
 
-    fireEvent.press(getByText('Select'));
-    expect(mockHandlers.onSelect).toHaveBeenCalledWith('1');
+    fireEvent.press(getByText("Select"));
+    expect(mockHandlers.onSelect).toHaveBeenCalledWith("1");
   });
 
-  it('shows completed state when quest is completed', () => {
-    const completedQuest = { 
-      ...mockQuest, 
-      selected: true, 
+  it("shows completed state when quest is completed", () => {
+    const completedQuest = {
+      ...mockQuest,
+      selected: true,
       completed: true,
       feedback: {
-        rating: 'thumbs_up',
+        rating: "thumbs_up",
         completed: true,
-      }
+      },
     };
-    
+
     const { getByText } = render(
-      <QuestCard
-        quest={completedQuest}
-        {...mockHandlers}
-        showActions={false}
-      />
+      <QuestCard quest={completedQuest} {...mockHandlers} showActions={false} />
     );
 
-    expect(getByText('Completed!')).toBeTruthy();
-    expect(getByText('Liked this quest!')).toBeTruthy();
+    expect(getByText("Completed!")).toBeTruthy();
+    expect(getByText("Liked this quest!")).toBeTruthy();
   });
 
-  it('shows skipped state when quest is skipped', () => {
-    const skippedQuest = { 
-      ...mockQuest, 
-      selected: true, 
+  it("shows skipped state when quest is skipped", () => {
+    const skippedQuest = {
+      ...mockQuest,
+      selected: true,
       skipped: true,
       feedback: {
         rating: null,
         completed: false,
-      }
+      },
     };
-    
+
     const { getByText } = render(
-      <QuestCard
-        quest={skippedQuest}
-        {...mockHandlers}
-        showActions={false}
-      />
+      <QuestCard quest={skippedQuest} {...mockHandlers} showActions={false} />
     );
 
-    expect(getByText('Skipped')).toBeTruthy();
+    expect(getByText("Skipped")).toBeTruthy();
   });
 
-  it('shows expired state when quest is expired', () => {
-    const expiredQuest = { 
-      ...mockQuest, 
-      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours ago
+  it("shows expired state when quest is expired", () => {
+    const expiredQuest = {
+      ...mockQuest,
+      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
     };
-    
+
     const { getByText } = render(
-      <QuestCard
-        quest={expiredQuest}
-        {...mockHandlers}
-        showActions={false}
-      />
+      <QuestCard quest={expiredQuest} {...mockHandlers} showActions={false} />
     );
 
-    expect(getByText('Expired')).toBeTruthy();
+    expect(getByText("Expired")).toBeTruthy();
   });
 
-  it('does not show actions when showActions is false', () => {
+  it("does not show actions when showActions is false", () => {
     const { queryByText } = render(
-      <QuestCard
-        quest={mockQuest}
-        {...mockHandlers}
-        showActions={false}
-      />
+      <QuestCard quest={mockQuest} {...mockHandlers} showActions={false} />
     );
 
-    expect(queryByText('Select')).toBeFalsy();
-    expect(queryByText('Complete')).toBeFalsy();
-    expect(queryByText('Skip')).toBeFalsy();
+    expect(queryByText("Select")).toBeFalsy();
+    expect(queryByText("Complete")).toBeFalsy();
+    expect(queryByText("Skip")).toBeFalsy();
   });
 });

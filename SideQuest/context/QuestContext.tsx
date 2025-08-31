@@ -19,7 +19,7 @@ interface QuestState {
   skippedQuests: Quest[];
   isLoading: boolean;
   error: string | null;
-  lastUpdated: Date | null; // Changed back to Date object
+  lastUpdated: string | null; // Store as ISO string for consistency
   preferences: QuestPreferences | null;
 }
 
@@ -41,7 +41,7 @@ type QuestAction =
   | { type: "SET_PREFERENCES"; payload: QuestPreferences }
   | { type: "UPDATE_PREFERENCES"; payload: Partial<QuestPreferences> }
   | { type: "RESET_QUESTS" }
-  | { type: "SET_LAST_UPDATED"; payload: string }; // Changed to string
+  | { type: "SET_LAST_UPDATED"; payload: string };
 
 // Initial state
 const initialState: QuestState = {
@@ -104,7 +104,7 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
             ? {
                 ...q,
                 completed: true,
-                completedAt: new Date().toISOString(),
+                completedAt: new Date(),
                 feedback: action.payload.feedback,
               }
             : q
@@ -208,14 +208,14 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_ERROR", payload: null });
 
-      console.log("Generating daily quests...");
+      console.log("Getting available quests...");
       const preferences = await preferencesService.getQuestPreferences();
       console.log("Preferences:", preferences);
-      const quests = await questService.generateDailyQuests(preferences);
+      const quests = await questService.getAvailableQuests(preferences);
 
-      console.log(`Generated ${quests.length} quests`);
+      console.log(`Got ${quests.length} quests`);
       dispatch({ type: "SET_TODAY_QUESTS", payload: quests });
-      dispatch({ type: "SET_LAST_UPDATED", payload: new Date() });
+      dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
     } catch (error) {
       console.error("Error generating quests:", error);
       dispatch({
@@ -302,7 +302,35 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
 
   // Refresh quests
   const refreshQuests = async () => {
-    await generateDailyQuests();
+    if (isGeneratingQuests) {
+      console.log("Quest refresh already in progress, skipping...");
+      return;
+    }
+
+    try {
+      setIsGeneratingQuests(true);
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_ERROR", payload: null });
+
+      console.log("Refreshing quests...");
+      const preferences = await preferencesService.getQuestPreferences();
+      console.log("Preferences:", preferences);
+      const quests = await questService.refreshQuests(preferences);
+
+      console.log(`Refreshed quests, got ${quests.length} new quests`);
+      dispatch({ type: "SET_TODAY_QUESTS", payload: quests });
+      dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
+    } catch (error) {
+      console.error("Error refreshing quests:", error);
+      dispatch({
+        type: "SET_ERROR",
+        payload:
+          error instanceof Error ? error.message : "Failed to refresh quests",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+      setIsGeneratingQuests(false);
+    }
   };
 
   // Update preferences
