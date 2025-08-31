@@ -175,7 +175,7 @@ export default function TodayScreen() {
           {state.lastUpdated && (
             <Text style={styles.lastUpdated}>
               Last updated:{" "}
-              {state.lastUpdated.toLocaleTimeString([], {
+              {new Date(state.lastUpdated).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}

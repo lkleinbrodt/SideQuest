@@ -1,7 +1,3 @@
-Here’s a full README.md draft for SideQuest. It’s Markdown-friendly, repo-ready, and combines + expands on the last two specs. It’s fleshed out for clarity so an AI collaborator (or a human dev) could pick it up and immediately understand what needs building.
-
-⸻
-
 # SideQuest 🎯
 
 _A playful, minimalist app for daily micro-adventures._

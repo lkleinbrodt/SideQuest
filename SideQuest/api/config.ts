@@ -20,20 +20,26 @@ export const getApiConfig = () => {
   );
 };
 
-// SideQuest specific endpoints
+// SideQuest specific endpoints - updated to match backend routes
 export const ENDPOINTS = {
   // Quest management
-  GENERATE_DAILY: "/sidequest/generate_daily",
-  TODAY: "/sidequest/today",
-  FEEDBACK: "/sidequest/feedback",
-  SELECT: "/sidequest/select",
-  COMPLETE: "/sidequest/complete",
+  GENERATE_DAILY: "/sidequest/generate",
+  QUESTS: "/sidequest/quests",
+  SELECT_QUEST: "/sidequest/quests/:id/select",
+  COMPLETE_QUEST: "/sidequest/quests/:id/complete",
+  SKIP_QUEST: "/sidequest/quests/:id/skip",
 
   // User preferences
   PREFERENCES: "/sidequest/preferences",
-  ONBOARDING: "/sidequest/onboarding",
+  ONBOARDING_COMPLETE: "/sidequest/onboarding/complete",
+
+  // Quest history
+  HISTORY: "/sidequest/history",
+
+  // Health check
+  HEALTH: "/sidequest/health",
 
   // Authentication
-  AUTH: "/sidequest/auth",
-  REFRESH: "/sidequest/refresh",
+  APPLE_SIGNIN: "/sidequest/auth/apple/signin",
+  REFRESH_TOKEN: "/auth/refresh",
 } as const;

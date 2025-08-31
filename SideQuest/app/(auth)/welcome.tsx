@@ -1,7 +1,15 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 
-import { Image, Platform, StyleSheet, Text, View } from "react-native";
-import React, { useEffect } from "react";
+import {
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import React, { useEffect, useState } from "react";
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
@@ -12,40 +20,25 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function WelcomeScreen() {
-  const { signIn } = useAuth();
+  const { signInWithApple } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
-  // Check if user has completed onboarding
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      try {
-        const isComplete = await preferencesService.isOnboardingComplete();
-        if (isComplete) {
-          // User has completed onboarding, redirect to main app
-          router.replace("/(tabs)");
-        }
-      } catch (error) {
-        console.error("Error checking onboarding status:", error);
-      }
-    };
-
-    checkOnboardingStatus();
-  }, [router]);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignIn = async () => {
     try {
-      // For now, create a mock user and token
-      // In production, this would integrate with Apple Authentication
-      const mockToken = "mock-jwt-token";
-      const mockUser = {
-        id: "user-1",
-        name: "Adventurer",
-        email: "adventurer@sidequest.app",
-        preferences: {},
-      };
+      setIsSigningIn(true);
 
-      await signIn(mockToken, mockUser);
+      // Request Apple Sign-In
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Authenticate with backend
+      await signInWithApple(credential);
 
       // Check if user needs to complete onboarding
       const isOnboardingComplete =
@@ -57,6 +50,26 @@ export default function WelcomeScreen() {
       }
     } catch (error) {
       console.error("Sign in error:", error);
+
+      // Handle specific Apple Sign-In errors
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "ERR_CANCELED"
+      ) {
+        // User cancelled the sign-in
+        return;
+      }
+
+      // Show error to user
+      Alert.alert(
+        "Sign In Failed",
+        "There was an error signing in with Apple. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -72,14 +85,6 @@ export default function WelcomeScreen() {
         <Text style={styles.title}>SideQuest</Text>
         <Text style={styles.subtitle}>Daily micro-adventures await</Text>
 
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.description}>
-            Start each morning with three personalized quests designed to add
-            novelty, productivity, and joy to your day — without guilt or
-            pressure.
-          </Text>
-        </View>
-
         {Platform.OS === "ios" && (
           <AppleAuthentication.AppleAuthenticationButton
             buttonType={
@@ -89,8 +94,8 @@ export default function WelcomeScreen() {
               AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
             }
             cornerRadius={8}
-            style={styles.appleButton}
-            onPress={handleSignIn}
+            style={[styles.appleButton, isSigningIn && { opacity: 0.5 }]}
+            onPress={isSigningIn ? () => {} : handleSignIn}
           />
         )}
 
@@ -105,7 +110,24 @@ export default function WelcomeScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
+            By continuing, you agree to our{" "}
+            <Text
+              style={styles.link}
+              onPress={() =>
+                Linking.openURL("https://www.landonkleinbrodt.com/terms")
+              }
+            >
+              Terms of Service
+            </Text>{" "}
+            and{" "}
+            <Text
+              style={styles.link}
+              onPress={() =>
+                Linking.openURL("https://www.landonkleinbrodt.com/privacy")
+              }
+            >
+              Privacy Policy
+            </Text>
           </Text>
         </View>
       </View>
@@ -192,5 +214,9 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     textAlign: "center",
     lineHeight: 18,
+  },
+  link: {
+    color: Colors.primary,
+    textDecorationLine: "underline",
   },
 });

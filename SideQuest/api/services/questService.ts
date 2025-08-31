@@ -1,74 +1,17 @@
-import { apiClient } from '../client';
-import { 
-  Quest, 
-  QuestPreferences, 
-  QuestGenerationRequest, 
-  QuestGenerationResponse,
+import {
+  Quest,
   QuestCompletionRequest,
+  QuestGenerationRequest,
+  QuestGenerationResponse,
   QuestHistory,
-  QuestCategory,
-  QuestDifficulty
-} from '@/types/quest';
+  QuestPreferences,
+} from "@/types/quest";
+
+import { ENDPOINTS } from "../config";
+import { FALLBACK_QUESTS } from "@/utils/fallbackQuests";
+import { apiClient } from "../client";
 
 // Fallback quest pool for when API is unavailable
-const FALLBACK_QUESTS: Omit<Quest, 'id' | 'createdAt' | 'expiresAt' | 'selected' | 'completed' | 'skipped'>[] = [
-  {
-    text: "Take a 10-minute walk outside and notice 3 things you haven't seen before",
-    category: 'outdoors',
-    estimatedTime: "10 min",
-    difficulty: 'easy',
-    tags: ['nature', 'mindfulness', 'exercise'],
-  },
-  {
-    text: "Text a friend you haven't talked to in a while with a fun question",
-    category: 'social',
-    estimatedTime: "5 min",
-    difficulty: 'easy',
-    tags: ['connection', 'communication'],
-  },
-  {
-    text: "Try a new recipe with ingredients you already have at home",
-    category: 'hobbies',
-    estimatedTime: "15 min",
-    difficulty: 'medium',
-    tags: ['cooking', 'creativity', 'learning'],
-  },
-  {
-    text: "Do 10 minutes of stretching or yoga",
-    category: 'fitness',
-    estimatedTime: "10 min",
-    difficulty: 'easy',
-    tags: ['health', 'wellness', 'flexibility'],
-  },
-  {
-    text: "Write down 3 things you're grateful for today",
-    category: 'mindfulness',
-    estimatedTime: "5 min",
-    difficulty: 'easy',
-    tags: ['gratitude', 'reflection', 'mental-health'],
-  },
-  {
-    text: "Organize one small area of your living space",
-    category: 'chores',
-    estimatedTime: "10 min",
-    difficulty: 'easy',
-    tags: ['organization', 'cleanliness'],
-  },
-  {
-    text: "Learn to say 'hello' in a new language",
-    category: 'learning',
-    estimatedTime: "5 min",
-    difficulty: 'easy',
-    tags: ['education', 'culture', 'language'],
-  },
-  {
-    text: "Draw or doodle something for 5 minutes",
-    category: 'creativity',
-    estimatedTime: "5 min",
-    difficulty: 'easy',
-    tags: ['art', 'expression', 'relaxation'],
-  },
-];
 
 class QuestService {
   private static instance: QuestService;
@@ -86,7 +29,7 @@ class QuestService {
   }
 
   private initializeFallbackQuests() {
-    this.fallbackQuests = FALLBACK_QUESTS.map(quest => ({
+    this.fallbackQuests = FALLBACK_QUESTS.map((quest) => ({
       ...quest,
       id: `fallback-${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date(),
@@ -98,29 +41,45 @@ class QuestService {
   }
 
   /**
+   * Convert frontend preferences to backend format
+   */
+  private convertPreferencesToBackend(preferences: QuestPreferences) {
+    return {
+      categories: preferences.categories,
+      difficulty: preferences.difficulty,
+      max_time: preferences.maxTime,
+      include_completed: preferences.includeCompleted,
+      include_skipped: preferences.includeSkipped,
+    };
+  }
+
+  /**
    * Generate daily quests based on user preferences
    */
   async generateDailyQuests(preferences: QuestPreferences): Promise<Quest[]> {
     try {
       const request: QuestGenerationRequest = {
-        preferences,
+        preferences: this.convertPreferencesToBackend(preferences),
         context: {
           timeOfDay: this.getTimeOfDay(),
           // Add more context as available
         },
       };
 
-      const response = await apiClient.post<QuestGenerationResponse>('/sidequest/generate', request);
-      
-      if (response.ok && response.data) {
-        return response.data.quests;
+      const response = await apiClient.post<QuestGenerationResponse>(
+        ENDPOINTS.GENERATE_DAILY,
+        request
+      );
+
+      if (response.ok && response.data?.success && response.data.data?.quests) {
+        return response.data.data.quests;
       }
 
       // Fallback to curated quests if API fails
-      console.log('API failed, using fallback quests');
+      console.log("API failed, using fallback quests");
       return this.getFallbackQuests(preferences);
     } catch (error) {
-      console.error('Error generating quests:', error);
+      console.error("Error generating quests:", error);
       return this.getFallbackQuests(preferences);
     }
   }
@@ -130,27 +89,29 @@ class QuestService {
    */
   private getFallbackQuests(preferences: QuestPreferences): Quest[] {
     let availableQuests = [...this.fallbackQuests];
-    
+
     // Filter by category preferences
     if (preferences.categories.length > 0) {
-      availableQuests = availableQuests.filter(quest => 
+      availableQuests = availableQuests.filter((quest) =>
         preferences.categories.includes(quest.category)
       );
     }
 
     // Filter by difficulty
-    if (preferences.difficulty !== 'hard') {
-      availableQuests = availableQuests.filter(quest => 
-        quest.difficulty === preferences.difficulty || quest.difficulty === 'easy'
+    if (preferences.difficulty !== "hard") {
+      availableQuests = availableQuests.filter(
+        (quest) =>
+          quest.difficulty === preferences.difficulty ||
+          quest.difficulty === "easy"
       );
     }
 
     // Filter by time
     if (preferences.maxTime > 0) {
       const maxMinutes = preferences.maxTime;
-      availableQuests = availableQuests.filter(quest => {
+      availableQuests = availableQuests.filter((quest) => {
         const timeStr = quest.estimatedTime;
-        const minutes = parseInt(timeStr.match(/\d+/)?.[0] || '15');
+        const minutes = parseInt(timeStr.match(/\d+/)?.[0] || "15");
         return minutes <= maxMinutes;
       });
     }
@@ -164,10 +125,47 @@ class QuestService {
    */
   async submitQuestFeedback(request: QuestCompletionRequest): Promise<boolean> {
     try {
-      const response = await apiClient.post('/sidequest/complete', request);
+      const response = await apiClient.post(
+        ENDPOINTS.COMPLETE_QUEST.replace(":id", request.questId),
+        {
+          feedback_rating: request.feedback.rating,
+          feedback_comment: request.feedback.comment,
+          time_spent: request.feedback.timeSpent,
+        }
+      );
       return response.ok;
     } catch (error) {
-      console.error('Error submitting quest feedback:', error);
+      console.error("Error submitting quest feedback:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Select a quest
+   */
+  async selectQuest(questId: string): Promise<boolean> {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.SELECT_QUEST.replace(":id", questId)
+      );
+      return response.ok;
+    } catch (error) {
+      console.error("Error selecting quest:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Skip a quest
+   */
+  async skipQuest(questId: string): Promise<boolean> {
+    try {
+      const response = await apiClient.post(
+        ENDPOINTS.SKIP_QUEST.replace(":id", questId)
+      );
+      return response.ok;
+    } catch (error) {
+      console.error("Error skipping quest:", error);
       return false;
     }
   }
@@ -177,16 +175,18 @@ class QuestService {
    */
   async getQuestHistory(date: Date): Promise<QuestHistory | null> {
     try {
-      const dateStr = date.toISOString().split('T')[0];
-      const response = await apiClient.get<QuestHistory>(`/sidequest/history/${dateStr}`);
-      
+      const dateStr = date.toISOString().split("T")[0];
+      const response = await apiClient.get<QuestHistory>(
+        `${ENDPOINTS.HISTORY}?date=${dateStr}`
+      );
+
       if (response.ok && response.data) {
         return response.data;
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Error fetching quest history:', error);
+      console.error("Error fetching quest history:", error);
       return null;
     }
   }
@@ -202,8 +202,8 @@ class QuestService {
     averageTimeSpent: number;
   }> {
     try {
-      const response = await apiClient.get('/sidequest/stats');
-      
+      const response = await apiClient.get("/sidequest/stats");
+
       if (response.ok && response.data) {
         return response.data as {
           totalQuests: number;
@@ -213,7 +213,7 @@ class QuestService {
           averageTimeSpent: number;
         };
       }
-      
+
       // Return default stats if API fails
       return {
         totalQuests: 0,
@@ -223,7 +223,7 @@ class QuestService {
         averageTimeSpent: 0,
       };
     } catch (error) {
-      console.error('Error fetching quest stats:', error);
+      console.error("Error fetching quest stats:", error);
       return {
         totalQuests: 0,
         completedQuests: 0,
@@ -239,10 +239,10 @@ class QuestService {
    */
   private getTimeOfDay(): string {
     const hour = new Date().getHours();
-    if (hour < 12) return 'morning';
-    if (hour < 17) return 'afternoon';
-    if (hour < 21) return 'evening';
-    return 'night';
+    if (hour < 12) return "morning";
+    if (hour < 17) return "afternoon";
+    if (hour < 21) return "evening";
+    return "night";
   }
 
   /**

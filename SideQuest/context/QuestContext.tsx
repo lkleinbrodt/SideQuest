@@ -19,7 +19,7 @@ interface QuestState {
   skippedQuests: Quest[];
   isLoading: boolean;
   error: string | null;
-  lastUpdated: Date | null;
+  lastUpdated: Date | null; // Changed back to Date object
   preferences: QuestPreferences | null;
 }
 
@@ -41,7 +41,7 @@ type QuestAction =
   | { type: "SET_PREFERENCES"; payload: QuestPreferences }
   | { type: "UPDATE_PREFERENCES"; payload: Partial<QuestPreferences> }
   | { type: "RESET_QUESTS" }
-  | { type: "SET_LAST_UPDATED"; payload: Date };
+  | { type: "SET_LAST_UPDATED"; payload: string }; // Changed to string
 
 // Initial state
 const initialState: QuestState = {
@@ -101,7 +101,12 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
         ...state,
         todayQuests: state.todayQuests.map((q) =>
           q.id === action.payload.questId
-            ? { ...q, completed: true, feedback: action.payload.feedback }
+            ? {
+                ...q,
+                completed: true,
+                completedAt: new Date().toISOString(),
+                feedback: action.payload.feedback,
+              }
             : q
         ),
         selectedQuests: state.selectedQuests.filter(
@@ -118,7 +123,11 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
         ...state,
         todayQuests: state.todayQuests.map((q) =>
           q.id === action.payload.questId
-            ? { ...q, skipped: true, feedback: action.payload.feedback }
+            ? {
+                ...q,
+                skipped: true,
+                feedback: action.payload.feedback,
+              }
             : q
         ),
         selectedQuests: state.selectedQuests.filter(
@@ -148,6 +157,7 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
         selectedQuests: [],
         completedQuests: [],
         skippedQuests: [],
+        lastUpdated: null,
       };
 
     case "SET_LAST_UPDATED":
@@ -162,8 +172,8 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
 interface QuestContextType {
   state: QuestState;
   generateDailyQuests: () => Promise<void>;
-  selectQuest: (questId: string) => void;
-  deselectQuest: (questId: string) => void;
+  selectQuest: (questId: string) => Promise<void>;
+  deselectQuest: (questId: string) => Promise<void>;
   completeQuest: (questId: string, feedback: QuestFeedback) => Promise<void>;
   skipQuest: (questId: string, feedback: QuestFeedback) => Promise<void>;
   refreshQuests: () => Promise<void>;
@@ -175,11 +185,9 @@ interface QuestContextType {
 const QuestContext = createContext<QuestContextType | undefined>(undefined);
 
 // Provider component
-interface QuestProviderProps {
-  children: ReactNode;
-}
-
-export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
+export const QuestProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [state, dispatch] = useReducer(questReducer, initialState);
   const [isGeneratingQuests, setIsGeneratingQuests] = useState(false);
 
@@ -190,7 +198,6 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
 
   // Generate daily quests
   const generateDailyQuests = async () => {
-    // Prevent multiple simultaneous calls
     if (isGeneratingQuests) {
       console.log("Quest generation already in progress, skipping...");
       return;
@@ -222,13 +229,37 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
   };
 
   // Select quest
-  const selectQuest = (questId: string) => {
-    dispatch({ type: "SELECT_QUEST", payload: questId });
+  const selectQuest = async (questId: string) => {
+    try {
+      // Update local state immediately for better UX
+      dispatch({ type: "SELECT_QUEST", payload: questId });
+
+      // Submit to backend
+      const success = await questService.selectQuest(questId);
+      if (!success) {
+        console.warn(
+          "Failed to select quest on backend, reverting local state"
+        );
+        dispatch({ type: "DESELECT_QUEST", payload: questId });
+      }
+    } catch (error) {
+      console.error("Error selecting quest:", error);
+      // Revert local state on error
+      dispatch({ type: "DESELECT_QUEST", payload: questId });
+    }
   };
 
   // Deselect quest
-  const deselectQuest = (questId: string) => {
-    dispatch({ type: "DESELECT_QUEST", payload: questId });
+  const deselectQuest = async (questId: string) => {
+    try {
+      // Update local state immediately for better UX
+      dispatch({ type: "DESELECT_QUEST", payload: questId });
+
+      // Note: Backend doesn't have a deselect endpoint, so we just update local state
+      // If needed, we could implement this on the backend
+    } catch (error) {
+      console.error("Error deselecting quest:", error);
+    }
   };
 
   // Complete quest
@@ -238,10 +269,13 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
       dispatch({ type: "COMPLETE_QUEST", payload: { questId, feedback } });
 
       // Submit to backend
-      await questService.submitQuestFeedback({
+      const success = await questService.submitQuestFeedback({
         questId,
         feedback,
       });
+      if (!success) {
+        console.warn("Failed to complete quest on backend");
+      }
     } catch (error) {
       console.error("Error completing quest:", error);
       // Could revert state here if needed
@@ -255,10 +289,10 @@ export const QuestProvider: React.FC<QuestProviderProps> = ({ children }) => {
       dispatch({ type: "SKIP_QUEST", payload: { questId, feedback } });
 
       // Submit to backend
-      await questService.submitQuestFeedback({
-        questId,
-        feedback,
-      });
+      const success = await questService.skipQuest(questId);
+      if (!success) {
+        console.warn("Failed to skip quest on backend");
+      }
     } catch (error) {
       console.error("Error skipping quest:", error);
       // Could revert state here if needed

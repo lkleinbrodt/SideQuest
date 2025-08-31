@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { UserProfile, authService } from "@/api/services/authService";
 import {
   getUser,
   removeToken,
@@ -7,18 +8,12 @@ import {
   storeUser,
 } from "./storage";
 
-interface UserProfile {
-  id: string;
-  name?: string;
-  email?: string;
-  preferences?: any;
-}
-
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   error: string | null;
   signIn: (token: string, userData: UserProfile) => Promise<void>;
+  signInWithApple: (credential: any) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -70,6 +65,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Apple Sign-In function
+  const signInWithApple = async (credential: any) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Call backend API for Apple Sign-In
+      const response = await authService.signInWithApple(credential);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || "Apple Sign-In failed");
+      }
+
+      const { access_token, user } = response.data;
+
+      // Store token and user data
+      await storeToken(access_token);
+      await storeUser(JSON.stringify(user));
+
+      setUser(user);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Apple Sign-In failed";
+      setError(errorMessage);
+      throw err; // Re-throw to let the calling component handle it
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Sign out function
   const signOut = async () => {
     try {
@@ -95,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         loading,
         error,
         signIn,
+        signInWithApple,
         signOut,
         clearError,
       }}
