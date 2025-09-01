@@ -70,3 +70,32 @@ export const removeUser = async () => {
     console.log("Error removing user data", error);
   }
 };
+
+// Store onboarding completion status
+export const storeOnboardingCompleted = async (completed: boolean) => {
+  try {
+    await save("onboardingCompleted", completed.toString());
+  } catch (error) {
+    console.log("Error storing onboarding status", error);
+  }
+};
+
+// Get onboarding completion status
+export const getOnboardingCompleted = async (): Promise<boolean> => {
+  try {
+    const status = await load("onboardingCompleted");
+    return status === "true";
+  } catch (error) {
+    console.log("Error getting onboarding status", error);
+    return false; // Default to not completed
+  }
+};
+
+// Remove onboarding completion status
+export const removeOnboardingCompleted = async () => {
+  try {
+    await remove("onboardingCompleted");
+  } catch (error) {
+    console.log("Error removing onboarding status", error);
+  }
+};

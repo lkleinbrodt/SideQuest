@@ -3,12 +3,8 @@ const API_CONFIG = {
     baseURL: "http://localhost:5002/api",
     timeout: 30000,
   },
-  staging: {
-    baseURL: "https://staging-api.coyote-ai.com/api",
-    timeout: 30000,
-  },
   production: {
-    baseURL: "https://api.coyote-ai.com/api",
+    baseURL: "https://api.landonkleinbrodt.com/api",
     timeout: 30000,
   },
 };
@@ -22,26 +18,25 @@ export const getApiConfig = () => {
 
 // SideQuest specific endpoints - updated to match backend routes
 export const ENDPOINTS = {
-  // Quest management
-  GENERATE_DAILY: "/sidequest/generate",
-  AVAILABLE_QUESTS: "/sidequest/quests/available",
-  REFRESH_QUESTS: "/sidequest/quests/refresh",
-  QUESTS: "/sidequest/quests",
-  SELECT_QUEST: "/sidequest/quests/:id/select",
-  COMPLETE_QUEST: "/sidequest/quests/:id/complete",
-  SKIP_QUEST: "/sidequest/quests/:id/skip",
+  // Quest board management
+  QUEST_BOARD: "/sidequest/quests/board",
+  QUEST_BOARD_NEEDS_REFRESH: "/sidequest/quests/needs-refresh",
+  QUEST_BOARD_REFRESH: "/sidequest/quests/refresh",
+
+  // Quest status updates (consolidated)
+  QUEST_STATUS_UPDATE: "/sidequest/quests", // Will be used as base for /:id/status
 
   // User preferences
-  PREFERENCES: "/sidequest/preferences",
+  PROFILE: "/sidequest/me",
   ONBOARDING_COMPLETE: "/sidequest/onboarding/complete",
-
-  // Quest history
-  HISTORY: "/sidequest/history",
 
   // Health check
   HEALTH: "/sidequest/health",
 
   // Authentication
   APPLE_SIGNIN: "/sidequest/auth/apple/signin",
+  ANONYMOUS_SIGNIN: "/sidequest/auth/anonymous/signin",
+  CREATE_USER_WITH_PREFERENCES:
+    "/sidequest/auth/anonymous/create-with-preferences",
   REFRESH_TOKEN: "/auth/refresh",
 } as const;

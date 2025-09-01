@@ -5,14 +5,30 @@ export interface Quest {
   estimatedTime: string;
   difficulty: QuestDifficulty;
   tags: string[];
-  selected: boolean;
-  completed: boolean;
-  skipped: boolean;
+  status: QuestStatus;
   completedAt?: Date; // Convert from ISO string to Date
   feedback?: QuestFeedback;
   createdAt: Date; // Convert from ISO string to Date
   expiresAt: Date; // Convert from ISO string to Date
 }
+
+export interface QuestBoard {
+  id: number;
+  userId: number;
+  lastRefreshed: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  quests: Quest[];
+}
+
+export type QuestStatus =
+  | "potential"
+  | "accepted"
+  | "completed"
+  | "failed"
+  | "abandoned"
+  | "declined";
 
 export type QuestCategory =
   | "fitness"
@@ -79,31 +95,20 @@ export interface QuestCompletionRequest {
   feedback: QuestFeedback;
 }
 
-export interface QuestHistory {
-  date: Date; // Convert from ISO string to Date
-  quests: Quest[];
-  stats: {
-    selected: number;
-    completed: number;
-    skipped: number;
-    totalTime: number;
-  };
-}
-
 // Backend user preferences format
-export interface BackendUserPreferences {
+export interface UserProfile {
   id: number;
-  user_id: number;
+  userId: number;
   categories: QuestCategory[];
   difficulty: QuestDifficulty;
-  max_time: number;
-  include_completed: boolean;
-  include_skipped: boolean;
-  notifications_enabled: boolean;
-  notification_time: string;
+  maxTime: number;
+  includeCompleted: boolean;
+  includeSkipped: boolean;
+  notificationsEnabled: boolean;
+  notificationTime: string;
   timezone: string;
-  onboarding_completed: boolean;
-  last_quest_generation?: string;
-  created_at: string;
-  updated_at: string;
+  onboardingCompleted: boolean;
+  lastQuestGeneration?: string;
+  createdAt: string;
+  updatedAt: string;
 }

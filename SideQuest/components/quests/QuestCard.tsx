@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { Quest, QuestFeedback } from "@/types/quest";
+import React, { useState } from "react";
 
 import { Button } from "@/components/common/Button";
 import { Card } from "@/components/common/Card";
@@ -14,7 +15,9 @@ import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import { QuestCategory } from "@/types/quest";
-import React from "react";
+import { QuestCompletionModal } from "./QuestCompletionModal";
+
+const BADGE_SIZE = 40;
 
 const categoryImages = {
   fitness: require("@/assets/category-badges/fitness_1_transparent.png"),
@@ -26,23 +29,25 @@ const categoryImages = {
   learning: require("@/assets/category-badges/learning_1_transparent.png"),
   creativity: require("@/assets/category-badges/creativity_1_transparent.png"),
 };
+
 interface QuestCardProps {
   quest: Quest;
-  onSelect: (questId: string) => void;
-  onComplete: (questId: string) => void;
-  onSkip: (questId: string) => void;
-  onFeedback: (questId: string, feedback: QuestFeedback) => void;
+  onAccept?: (questId: string) => void;
+  onDecline?: (questId: string) => void;
+  onComplete?: (questId: string, feedback: QuestFeedback) => void;
+  onAbandon?: (questId: string) => void;
   showActions?: boolean;
 }
 
 export const QuestCard: React.FC<QuestCardProps> = ({
   quest,
-  onSelect,
+  onAccept,
+  onDecline,
   onComplete,
-  onSkip,
-  onFeedback,
+  onAbandon,
   showActions = true,
 }) => {
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "fitness":
@@ -84,235 +89,273 @@ export const QuestCard: React.FC<QuestCardProps> = ({
   };
 
   const handleComplete = () => {
-    Alert.alert("Complete Quest", "How was this quest?", [
-      {
-        text: "Thumbs Down",
-        style: "destructive",
-        onPress: () => {
-          onComplete(quest.id);
-          onFeedback(quest.id, {
-            rating: "thumbs_down",
-            completed: true,
-          });
-        },
-      },
-      {
-        text: "Thumbs Up",
-        style: "default",
-        onPress: () => {
-          onComplete(quest.id);
-          onFeedback(quest.id, {
-            rating: "thumbs_up",
-            completed: true,
-          });
-        },
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
+    setShowCompletionModal(true);
   };
 
-  const handleSkip = () => {
-    Alert.alert("Skip Quest", "Are you sure you want to skip this quest?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Skip",
-        style: "destructive",
-        onPress: () => {
-          onSkip(quest.id);
-          onFeedback(quest.id, {
-            rating: null,
-            completed: false,
-          });
-        },
-      },
-    ]);
+  const handleFeedbackSubmit = (feedback: QuestFeedback) => {
+    if (onComplete) {
+      onComplete(quest.id, feedback);
+    }
   };
 
-  const isExpired = new Date() > quest.expiresAt;
+  const handleAbandon = () => {
+    Alert.alert(
+      "Abandon Quest",
+      "Are you sure you want to abandon this quest?",
+      [
+        {
+          text: "Yes, Abandon",
+          style: "destructive",
+          onPress: () => {
+            if (onAbandon) {
+              onAbandon(quest.id);
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
 
-  return (
-    <Card
-      variant="elevated"
-      style={[
-        styles.container,
-        quest.selected && styles.selected,
-        quest.completed && styles.completed,
-        quest.skipped && styles.skipped,
-        isExpired && styles.expired,
-      ]}
-    >
-      <Image
-        source={getCategoryAsset(quest.category)}
-        style={styles.categoryIcon}
-        resizeMode="contain"
-      />
-      {/* Quest text */}
-      <Text style={styles.questText}>{quest.text}</Text>
+  const handleDecline = () => {
+    Alert.alert(
+      "Decline Quest",
+      "Are you sure you want to decline this quest?",
+      [
+        {
+          text: "Yes, Decline",
+          style: "destructive",
+          onPress: () => {
+            if (onDecline) {
+              onDecline(quest.id);
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
 
-      {/* Status indicators */}
-      <View style={styles.statusContainer}>
-        {quest.completed && (
-          <View style={styles.statusBadge}>
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              color={Colors.success}
-            />
-            <Text style={styles.statusText}>Completed!</Text>
-          </View>
-        )}
+  const getStatusColor = () => {
+    switch (quest.status) {
+      case "potential":
+        return Colors.primary;
+      case "accepted":
+        return Colors.warning;
+      case "completed":
+        return Colors.success;
+      case "failed":
+        return Colors.error;
+      case "abandoned":
+        return Colors.mutedText;
+      case "declined":
+        return Colors.mutedText;
+      default:
+        return Colors.secondary;
+    }
+  };
 
-        {quest.skipped && (
-          <View style={styles.statusBadge}>
-            <Ionicons name="close-circle" size={20} color={Colors.warning} />
-            <Text style={styles.statusText}>Skipped</Text>
-          </View>
-        )}
+  const getStatusText = () => {
+    switch (quest.status) {
+      case "potential":
+        return "Available";
+      case "accepted":
+        return "In Progress";
+      case "completed":
+        return "Completed";
+      case "failed":
+        return "Failed";
+      case "abandoned":
+        return "Abandoned";
+      case "declined":
+        return "Declined";
+      default:
+        return "Unknown";
+    }
+  };
 
-        {isExpired && (
-          <View style={styles.statusBadge}>
-            <Ionicons name="time" size={20} color={Colors.error} />
-            <Text style={styles.statusText}>Expired</Text>
-          </View>
-        )}
-      </View>
+  const renderActions = () => {
+    if (!showActions) return null;
 
-      {/* Action buttons */}
-      {showActions && !quest.completed && !quest.skipped && !isExpired && (
-        <View style={styles.actionsContainer}>
-          {!quest.selected && (
-            <Button
-              title={quest.selected ? "Selected" : "Select"}
-              onPress={() => onSelect(quest.id)}
-              variant={quest.selected ? "primary" : "outline"}
-              size="small"
-              style={styles.actionButton}
-            />
-          )}
-
-          {quest.selected && (
-            <>
+    switch (quest.status) {
+      case "potential":
+        return (
+          <View style={styles.actionButtons}>
+            {onAccept && (
               <Button
-                title="Skip"
-                onPress={handleSkip}
-                variant="outline"
-                size="small"
-                style={styles.actionButton}
+                title="Accept"
+                onPress={() => onAccept(quest.id)}
+                style={[styles.actionButton, styles.acceptButton]}
+                textStyle={styles.actionButtonText}
               />
+            )}
+            {onDecline && (
+              <Button
+                title="Decline"
+                onPress={handleDecline}
+                style={[styles.actionButton, styles.declineButton]}
+                textStyle={styles.actionButtonText}
+              />
+            )}
+          </View>
+        );
+
+      case "accepted":
+        return (
+          <View style={styles.actionButtons}>
+            {onComplete && (
               <Button
                 title="Complete"
                 onPress={handleComplete}
-                variant="success"
-                size="small"
-                style={styles.actionButton}
+                style={[styles.actionButton, styles.completeButton]}
+                textStyle={styles.actionButtonText}
               />
-            </>
-          )}
-        </View>
-      )}
-
-      {/* Feedback if completed */}
-      {quest.completed && quest.feedback && (
-        <View style={styles.feedbackContainer}>
-          <View style={styles.feedbackRow}>
-            <Ionicons
-              name={
-                quest.feedback.rating === "thumbs_up"
-                  ? "thumbs-up"
-                  : "thumbs-down"
-              }
-              size={20}
-              color={
-                quest.feedback.rating === "thumbs_up"
-                  ? Colors.success
-                  : Colors.error
-              }
-            />
-            <Text style={styles.feedbackText}>
-              {quest.feedback.rating === "thumbs_up"
-                ? "Liked this quest!"
-                : "Didn't enjoy this quest"}
-            </Text>
+            )}
+            {onAbandon && (
+              <Button
+                title="Abandon"
+                onPress={handleAbandon}
+                style={[styles.actionButton, styles.abandonButton]}
+                textStyle={styles.actionButtonText}
+              />
+            )}
           </View>
-          {quest.feedback.comment && (
-            <Text style={styles.commentText}>{quest.feedback.comment}</Text>
-          )}
+        );
+
+      case "abandoned":
+        return (
+          <View style={styles.actionButtons}>
+            {onAccept && (
+              <Button
+                title="Pick Up Again"
+                onPress={() => onAccept(quest.id)}
+                style={[styles.actionButton, styles.acceptButton]}
+                textStyle={styles.actionButtonText}
+              />
+            )}
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.categoryContainer}>
+          <Image
+            source={getCategoryAsset(quest.category)}
+            style={styles.categoryImage}
+          />
+          <View style={styles.categoryInfo}>
+            <Text
+              style={[
+                styles.category,
+                { color: getCategoryColor(quest.category) },
+              ]}
+            >
+              {quest.category}
+            </Text>
+            <Text style={styles.estimatedTime}>{quest.estimatedTime}</Text>
+          </View>
         </View>
-      )}
+        <View style={styles.statusContainer}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}
+          >
+            <Text style={styles.statusText}>{getStatusText()}</Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={styles.questText}>{quest.text}</Text>
+
+      <View style={styles.footer}>
+        <View style={styles.tags}>
+          {quest.tags.map((tag, index) => (
+            <View key={index} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.difficultyContainer}>
+          <Text
+            style={[
+              styles.difficulty,
+              { color: getDifficultyColor(quest.difficulty) },
+            ]}
+          >
+            {quest.difficulty}
+          </Text>
+        </View>
+      </View>
+
+      {renderActions()}
+
+      <QuestCompletionModal
+        visible={showCompletionModal}
+        questText={quest.text}
+        onClose={() => setShowCompletionModal(false)}
+        onSubmit={handleFeedbackSubmit}
+      />
     </Card>
   );
 };
 
-const BADGE_SIZE = 128;
-
 const styles = StyleSheet.create({
-  container: {
+  card: {
     marginBottom: Layout.spacing.m,
     padding: Layout.spacing.l,
-  },
-  selected: {
-    borderColor: Colors.success,
-    borderWidth: 2,
-  },
-  completed: {
-    backgroundColor: Colors.questCompleted,
-  },
-  skipped: {
-    backgroundColor: Colors.questSkipped,
-  },
-  expired: {
-    opacity: 0.6,
-    backgroundColor: Colors.questExpired,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: Layout.spacing.m,
   },
   categoryContainer: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
-  categoryBadge: {
+  categoryImage: {
     width: BADGE_SIZE,
     height: BADGE_SIZE,
-    borderRadius: BADGE_SIZE / 2,
-    alignItems: "center",
-    justifyContent: "center",
     marginRight: Layout.spacing.xs,
   },
-  categoryText: {
+  categoryInfo: {
+    flex: 1,
+  },
+  category: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.mutedText,
     textTransform: "capitalize",
   },
-  metaContainer: {
+  estimatedTime: {
+    fontSize: 12,
+    color: Colors.secondary,
+    marginTop: Layout.spacing.xs,
+  },
+  statusContainer: {
     alignItems: "flex-end",
   },
-  difficultyBadge: {
+  statusBadge: {
     paddingHorizontal: Layout.spacing.xs,
     paddingVertical: 2,
     borderRadius: 8,
-    marginBottom: Layout.spacing.xs,
   },
-  difficultyText: {
-    fontSize: 10,
+  statusText: {
+    fontSize: 12,
     fontWeight: "600",
     color: Colors.white,
-    textTransform: "capitalize",
-  },
-  timeText: {
-    fontSize: 14,
-    color: Colors.secondary,
-    fontWeight: "500",
   },
   questText: {
     fontSize: 16,
@@ -320,71 +363,62 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: Layout.spacing.m,
   },
-  tagsContainer: {
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: Layout.spacing.m,
+  },
+  tags: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: Layout.spacing.m,
   },
   tag: {
-    backgroundColor: Colors.tagBackground,
+    backgroundColor: Colors.lightGray,
     paddingHorizontal: Layout.spacing.xs,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 12,
     marginRight: Layout.spacing.xs,
     marginBottom: Layout.spacing.xs,
   },
   tagText: {
     fontSize: 12,
-    color: Colors.tagText,
+    color: Colors.mutedText,
     fontWeight: "500",
   },
-  statusContainer: {
-    marginBottom: Layout.spacing.m,
+  difficultyContainer: {
+    paddingHorizontal: Layout.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
   },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statusText: {
-    fontSize: 16,
+  difficulty: {
+    fontSize: 10,
     fontWeight: "600",
-    color: Colors.success,
-    marginLeft: Layout.spacing.xs,
+    textTransform: "capitalize",
   },
-  actionsContainer: {
+  actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    marginTop: Layout.spacing.m,
   },
   actionButton: {
     flex: 1,
     marginHorizontal: Layout.spacing.xs,
   },
-  feedbackContainer: {
-    marginTop: Layout.spacing.m,
-    paddingTop: Layout.spacing.m,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  feedbackRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Layout.spacing.xs,
-  },
-  feedbackText: {
+  actionButtonText: {
     fontSize: 14,
-    color: Colors.mutedText,
-    marginLeft: Layout.spacing.xs,
   },
-  commentText: {
-    fontSize: 14,
-    color: Colors.darkText,
-    fontStyle: "italic",
-    marginLeft: 24,
+  acceptButton: {
+    backgroundColor: Colors.success,
   },
-  categoryIcon: {
-    width: BADGE_SIZE,
-    height: BADGE_SIZE,
+  declineButton: {
+    backgroundColor: Colors.error,
+  },
+  completeButton: {
+    backgroundColor: Colors.success,
+  },
+  abandonButton: {
+    backgroundColor: Colors.mutedText,
   },
 });

@@ -3,15 +3,17 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
+import { QuestCategory } from "@/types/quest";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { preferencesService } from "@/api/services/preferencesService";
+import { storeOnboardingCompleted } from "@/auth/storage";
 import { useAuth } from "@/auth/AuthContext";
 import { useOnboarding } from "@/context/OnboardingContext";
 import { useRouter } from "expo-router";
 
 export const OnboardingCompletion: React.FC = () => {
   const { state, resetOnboarding } = useOnboarding();
-  const { user } = useAuth();
+  const { createUserWithPreferences } = useAuth();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -19,8 +21,8 @@ export const OnboardingCompletion: React.FC = () => {
     try {
       setIsSaving(true);
 
-      // Save user preferences
-      const preferences = {
+      // Prepare quest preferences
+      const questPreferences = {
         categories: state.data.preferredCategories || [
           "fitness",
           "social",
@@ -30,22 +32,18 @@ export const OnboardingCompletion: React.FC = () => {
         maxTime: state.data.maxTimePerQuest || 15,
         includeCompleted: true,
         includeSkipped: false,
-        notifications: {
-          enabled: !!state.data.notificationTime,
-          time: state.data.notificationTime || "07:00",
-          sound: true,
-          vibration: true,
-        },
-        theme: "system" as const,
-        language: "en",
-        accessibility: {
-          largeText: false,
-          highContrast: false,
-        },
       };
 
-      await preferencesService.saveUserPreferences(preferences);
-      await preferencesService.completeOnboarding();
+      // Create user with all preferences at once
+      await createUserWithPreferences(
+        questPreferences,
+        !!state.data.notificationTime,
+        state.data.notificationTime || "07:00",
+        "UTC" // Default timezone, could be made configurable later
+      );
+
+      // Store onboarding completion status in local storage
+      await storeOnboardingCompleted(true);
 
       // Reset onboarding context
       resetOnboarding();
@@ -75,7 +73,9 @@ export const OnboardingCompletion: React.FC = () => {
       chores: "Chores",
     };
 
-    return categories.map((cat) => categoryLabels[cat] || cat).join(", ");
+    return categories
+      .map((cat: QuestCategory) => categoryLabels[cat] || cat)
+      .join(", ");
   };
 
   return (

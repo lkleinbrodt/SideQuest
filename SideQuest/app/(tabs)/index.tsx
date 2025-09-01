@@ -9,106 +9,65 @@ import {
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 
+import { AnimatedLoading } from "@/components/common/AnimatedLoading";
 import { Colors } from "@/constants/Colors";
+import Error from "@/components/common/Error";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import { QuestCard } from "@/components/quests/QuestCard";
 import { QuestFeedback } from "@/types/quest";
+import { RefreshSpinner } from "@/components/common/RefreshSpinner";
 import { useQuest } from "@/context/QuestContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type TabType = "active" | "potential";
+type TabType = "potential" | "active";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-export default function TodayScreen() {
+export default function QuestBoardScreen() {
   const insets = useSafeAreaInsets();
-  const {
-    state,
-    generateDailyQuests,
-    selectQuest,
-    deselectQuest,
-    completeQuest,
-    skipQuest,
-    refreshQuests,
-  } = useQuest();
+  const { state, loadQuestBoard, updateQuestStatus } = useQuest();
 
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("potential");
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Load quests on component mount
+  // Load quest board on component mount
   useEffect(() => {
-    console.log("Today screen mounted, checking quests...");
-    if (state.todayQuests.length === 0) {
-      console.log("No quests found, generating...");
-      generateDailyQuests();
-    } else {
-      console.log(`Found ${state.todayQuests.length} existing quests`);
-    }
+    console.log("QuestBoard screen mounted, loading quest board...");
+    loadQuestBoard();
   }, []);
 
-  // Handle quest selection
-  const handleQuestSelect = (questId: string) => {
-    const quest = state.todayQuests.find((q) => q.id === questId);
-    if (quest?.selected) {
-      deselectQuest(questId);
-    } else {
-      selectQuest(questId);
-    }
+  // Handle quest acceptance
+  const handleQuestAccept = async (questId: string) => {
+    await updateQuestStatus(questId, "accepted");
   };
 
   // Handle quest completion
-  const handleQuestComplete = async (questId: string) => {
-    // This will be called by QuestCard with feedback
-  };
-
-  // Handle quest skip
-  const handleQuestSkip = async (questId: string) => {
-    // This will be called by QuestCard with feedback
-  };
-
-  // Handle quest feedback
-  const handleQuestFeedback = async (
+  const handleQuestComplete = async (
     questId: string,
     feedback: QuestFeedback
   ) => {
-    if (feedback.completed) {
-      await completeQuest(questId, feedback);
-    } else {
-      await skipQuest(questId, feedback);
-    }
+    await updateQuestStatus(questId, "completed", feedback);
+  };
+
+  // Handle quest abandonment
+  const handleQuestAbandon = async (questId: string) => {
+    await updateQuestStatus(questId, "abandoned");
+  };
+
+  // Handle quest decline
+  const handleQuestDecline = async (questId: string) => {
+    await updateQuestStatus(questId, "declined");
   };
 
   // Handle refresh
   const handleRefresh = async () => {
+    //the load board will refresh if necesssary and top up if necessary
     setRefreshing(true);
-    await refreshQuests();
+    await loadQuestBoard();
     setRefreshing(false);
   };
-
-  // Check if it's a new day and we need fresh quests
-  const shouldRefreshQuests = () => {
-    if (!state.lastUpdated) return true;
-
-    const now = new Date();
-    const lastUpdate = new Date(state.lastUpdated);
-    const diffTime = Math.abs(now.getTime() - lastUpdate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 1000)); // Convert to days
-
-    return diffDays >= 1;
-  };
-
-  // Auto-refresh quests if it's a new day - only run once on mount
-  useEffect(() => {
-    const checkAndRefresh = async () => {
-      if (shouldRefreshQuests()) {
-        await generateDailyQuests();
-      }
-    };
-
-    checkAndRefresh();
-  }, []); // Empty dependency array - only run on mount
 
   // Handle tab change with scroll
   const handleTabChange = (tab: TabType) => {
@@ -126,49 +85,64 @@ export default function TodayScreen() {
     }
   };
 
-  const getStatsText = () => {
-    const selected = state.selectedQuests.length;
-    const total = state.todayQuests.length;
-    const completed = state.completedQuests.length;
-    const skipped = state.skippedQuests.length;
-
-    if (total === 0) return "No quests available";
-    if (completed === total) return "All quests completed! 🎉";
-    if (skipped === total) return "All quests skipped";
-
-    let text = `${selected} of ${total} quests selected`;
-    if (completed > 0) text += ` • ${completed} completed`;
-    if (skipped > 0) text += ` • ${skipped} skipped`;
-
-    return text;
+  // Get quests by status
+  const getPotentialQuests = () => {
+    return state.questBoard.filter((q) => q.status === "potential");
   };
 
-  if (state.isLoading && state.todayQuests.length === 0) {
+  const getActiveQuests = () => {
+    return state.questBoard.filter(
+      (q) =>
+        q.status === "accepted" ||
+        q.status === "completed" ||
+        q.status === "abandoned"
+    );
+  };
+
+  const getStatsText = () => {
+    const potential = getPotentialQuests().length;
+    const active = getActiveQuests().length;
+    const total = state.questBoard.length;
+
+    if (total === 0) return "No quests available";
+    if (active === 0) return `${potential} potential quests available`;
+
+    return `${potential} potential • ${active} active`;
+  };
+
+  // Debug logging
+  console.log("QuestBoard render state:", {
+    isLoading: state.isLoading,
+    error: state.error,
+    questBoardLength: state.questBoard.length,
+    potentialQuests: getPotentialQuests().length,
+    activeQuests: getActiveQuests().length,
+  });
+
+  if (state.isLoading && state.questBoard.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.loadingContainer}>
-          <Ionicons name="refresh" size={48} color={Colors.primary} />
-          <Text style={styles.loadingText}>
-            Generating your daily quests...
-          </Text>
-        </View>
+        <AnimatedLoading
+          message="Loading your quest board..."
+          showProgress={true}
+        />
       </View>
     );
   }
 
-  if (state.error && state.todayQuests.length === 0) {
+  if (refreshing && getPotentialQuests().length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color={Colors.error} />
-          <Text style={styles.errorText}>Something went wrong</Text>
-          <Text style={styles.errorSubtext}>{state.error}</Text>
-          <Text style={styles.retryText} onPress={generateDailyQuests}>
-            Tap to retry
-          </Text>
-        </View>
+        <AnimatedLoading
+          message="Generating new quests for you"
+          showProgress={true}
+        />
       </View>
     );
+  }
+
+  if (state.error && state.questBoard.length === 0) {
+    return <Error subtext={state.error} onRetry={loadQuestBoard} />;
   }
 
   return (
@@ -192,15 +166,6 @@ export default function TodayScreen() {
           >
             Potential
           </Text>
-          {/* <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>
-              {
-                state.todayQuests.filter(
-                  (q) => !q.selected && !q.completed && !q.skipped
-                ).length
-              }
-            </Text>
-          </View> */}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -216,14 +181,6 @@ export default function TodayScreen() {
           >
             Active
           </Text>
-          {/* <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>
-              {
-                state.todayQuests.filter((q) => q.selected || q.completed)
-                  .length
-              }
-            </Text>
-          </View> */}
         </TouchableOpacity>
       </View>
 
@@ -245,36 +202,48 @@ export default function TodayScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+                colors={[Colors.primary]}
+                progressViewOffset={0}
+                progressBackgroundColor={Colors.white}
               />
             }
           >
             <View style={styles.questsContainer}>
-              {state.todayQuests.filter(
-                (q) => !q.selected && !q.completed && !q.skipped
-              ).length === 0 ? (
+              {getPotentialQuests().length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="compass" size={48} color={Colors.mutedText} />
                   <Text style={styles.emptyText}>
-                    No potential quests available
+                    {state.error
+                      ? "Failed to load quests"
+                      : "No potential quests available"}
                   </Text>
                   <Text style={styles.emptySubtext}>
-                    Pull down to refresh or check back later
+                    {state.error
+                      ? "There was a problem loading your quest board"
+                      : "Pull down to refresh or check back later"}
                   </Text>
+                  {state.error && (
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={loadQuestBoard}
+                    >
+                      <Text style={styles.retryButtonText}>Try Again</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
-                state.todayQuests
-                  .filter((q) => !q.selected && !q.completed && !q.skipped)
-                  .map((quest) => (
-                    <QuestCard
-                      key={quest.id}
-                      quest={quest}
-                      onSelect={handleQuestSelect}
-                      onComplete={handleQuestComplete}
-                      onSkip={handleQuestSkip}
-                      onFeedback={handleQuestFeedback}
-                      showActions={true}
-                    />
-                  ))
+                getPotentialQuests().map((quest) => (
+                  <QuestCard
+                    key={quest.id}
+                    quest={quest}
+                    onAccept={() => handleQuestAccept(quest.id)}
+                    onDecline={() => handleQuestDecline(quest.id)}
+                    onComplete={handleQuestComplete}
+                    onAbandon={() => handleQuestAbandon(quest.id)}
+                    showActions={true}
+                  />
+                ))
               )}
             </View>
           </ScrollView>
@@ -288,37 +257,50 @@ export default function TodayScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+                colors={[Colors.primary]}
+                progressViewOffset={0}
+                progressBackgroundColor={Colors.white}
               />
             }
           >
             <View style={styles.questsContainer}>
-              {state.todayQuests.filter((q) => q.selected || q.completed)
-                .length === 0 ? (
+              {getActiveQuests().length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Ionicons
                     name="checkmark-circle"
                     size={48}
                     color={Colors.mutedText}
                   />
-                  <Text style={styles.emptyText}>No active quests</Text>
-                  <Text style={styles.emptySubtext}>
-                    Select quests from the potential tab to get started
+                  <Text style={styles.emptyText}>
+                    {state.error ? "Failed to load quests" : "No active quests"}
                   </Text>
+                  <Text style={styles.emptySubtext}>
+                    {state.error
+                      ? "There was a problem loading your quest board"
+                      : "Accept quests from the potential tab to get started"}
+                  </Text>
+                  {state.error && (
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={loadQuestBoard}
+                    >
+                      <Text style={styles.retryButtonText}>Try Again</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
-                state.todayQuests
-                  .filter((q) => q.selected || q.completed)
-                  .map((quest) => (
-                    <QuestCard
-                      key={quest.id}
-                      quest={quest}
-                      onSelect={handleQuestSelect}
-                      onComplete={handleQuestComplete}
-                      onSkip={handleQuestSkip}
-                      onFeedback={handleQuestFeedback}
-                      showActions={true}
-                    />
-                  ))
+                getActiveQuests().map((quest) => (
+                  <QuestCard
+                    key={quest.id}
+                    quest={quest}
+                    onAccept={() => handleQuestAccept(quest.id)}
+                    onDecline={() => handleQuestDecline(quest.id)}
+                    onComplete={handleQuestComplete}
+                    onAbandon={() => handleQuestAbandon(quest.id)}
+                    showActions={true}
+                  />
+                ))
               )}
             </View>
           </ScrollView>
@@ -333,9 +315,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
-  scrollView: {
-    flex: 1,
-  },
   header: {
     padding: Layout.spacing.l,
     alignItems: "center",
@@ -344,7 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: Colors.primary,
-    // marginBottom: Layout.spacing.xs,
+    marginBottom: Layout.spacing.xs,
   },
   subtitle: {
     fontSize: 16,
@@ -360,44 +339,7 @@ const styles = StyleSheet.create({
   questsContainer: {
     paddingHorizontal: Layout.spacing.m,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    fontSize: 18,
-    color: Colors.mutedText,
-    marginTop: Layout.spacing.m,
-    textAlign: "center",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Layout.spacing.xl,
-  },
-  errorText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: Colors.error,
-    marginTop: Layout.spacing.m,
-    textAlign: "center",
-  },
-  errorSubtext: {
-    fontSize: 16,
-    color: Colors.mutedText,
-    marginTop: Layout.spacing.xs,
-    textAlign: "center",
-  },
-  retryText: {
-    fontSize: 16,
-    color: Colors.primary,
-    marginTop: Layout.spacing.m,
-    textAlign: "center",
-    textDecorationLine: "underline",
-  },
+
   emptyContainer: {
     padding: Layout.spacing.xl,
     alignItems: "center",
@@ -415,20 +357,9 @@ const styles = StyleSheet.create({
     marginTop: Layout.spacing.xs,
     textAlign: "center",
   },
-  footer: {
-    padding: Layout.spacing.l,
-    alignItems: "center",
-  },
-  footerText: {
-    fontSize: 14,
-    color: Colors.mutedText,
-    textAlign: "center",
-  },
   tabContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    // backgroundColor: Colors.lightGray,
-    // paddingVertical: Layout.spacing.s,
     paddingHorizontal: Layout.spacing.m,
     marginBottom: Layout.spacing.m,
   },
@@ -437,12 +368,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "50%",
     justifyContent: "center",
-
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    paddingBottom: Layout.spacing.xs,
   },
   activeTab: {
     borderBottomColor: Colors.primary,
@@ -457,9 +388,6 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: Colors.primary,
   },
-  activeTabIcon: {
-    color: Colors.primary,
-  },
   tabBadge: {
     position: "absolute",
     top: -5,
@@ -471,7 +399,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  activeTabBadge: {},
   tabBadgeText: {
     color: Colors.white,
     fontSize: 12,
@@ -485,5 +412,17 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     width: screenWidth,
+  },
+  retryButton: {
+    marginTop: Layout.spacing.m,
+    backgroundColor: Colors.primary,
+    paddingVertical: Layout.spacing.s,
+    paddingHorizontal: Layout.spacing.l,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

@@ -19,7 +19,8 @@ export {
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: "(tabs)",
+  // Note: Changed from (tabs) to (auth) since we now auto-login on app boot
+  initialRouteName: "(auth)",
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -36,11 +37,9 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+  // Note: We don't hide the splash screen here anymore
+  // The auto-login component will handle hiding it after authentication is complete
+  // This ensures the splash screen stays visible during the anonymous login process
 
   if (!loaded) {
     return null;
@@ -65,6 +64,14 @@ function RootLayoutNav() {
                   headerShown: false,
                   animation: "fade",
                   headerBackTitle: "Back",
+                }}
+              />
+              <Stack.Screen
+                name="settings"
+                options={{
+                  headerBackTitle: "Back",
+                  headerTitle: "",
+                  headerTransparent: true,
                 }}
               />
             </Stack>

@@ -14,11 +14,10 @@ import {
 
 import { Colors } from "@/constants/Colors";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/auth/AuthContext";
+import { removeOnboardingCompleted } from "@/auth/storage";
 import { useRouter } from "expo-router";
 
 export const SettingsScreen: React.FC = () => {
-  const { signOut } = useAuth();
   const router = useRouter();
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +28,26 @@ export const SettingsScreen: React.FC = () => {
 
   const loadPreferences = async () => {
     try {
-      const prefs = await preferencesService.getUserPreferences();
+      const profile = await preferencesService.getUserProfile();
+      const prefs: UserPreferences = {
+        categories: profile.categories,
+        difficulty: profile.difficulty,
+        maxTime: profile.maxTime,
+        includeCompleted: profile.includeCompleted,
+        includeSkipped: profile.includeSkipped,
+        notifications: {
+          enabled: profile.notificationsEnabled,
+          time: profile.notificationTime,
+          sound: true, // Default values for missing fields
+          vibration: true,
+        },
+        theme: "system" as const, // Default value
+        language: "en", // Default value
+        accessibility: {
+          largeText: false, // Default value
+          highContrast: false, // Default value
+        },
+      };
       setPreferences(prefs);
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -44,7 +62,7 @@ export const SettingsScreen: React.FC = () => {
   ) => {
     try {
       const updated = { ...preferences, [key]: value } as UserPreferences;
-      await preferencesService.saveUserPreferences(updated);
+      await preferencesService.updateUserProfile(updated);
       setPreferences(updated);
     } catch (error) {
       console.error("Error updating preference:", error);
@@ -62,21 +80,40 @@ export const SettingsScreen: React.FC = () => {
         ...preferences.notifications,
         [key]: value,
       };
-      await preferencesService.updateNotificationPreferences(
-        updatedNotifications
-      );
+      await preferencesService.updateUserProfile({
+        notificationsEnabled: updatedNotifications.enabled,
+        notificationTime: updatedNotifications.time,
+      });
       setPreferences({ ...preferences, notifications: updatedNotifications });
     } catch (error) {
       console.error("Error updating notification preference:", error);
     }
   };
 
-  const handleSignOut = async () => {
+  const handleResetPreferences = async () => {
     try {
-      await signOut();
-      router.replace("/(auth)/welcome");
+      // Reset user preferences to defaults
+      await preferencesService.updateUserProfile({
+        categories: ["fitness", "social", "mindfulness"],
+        difficulty: "easy",
+        maxTime: 15,
+        includeCompleted: true,
+        includeSkipped: false,
+        notificationsEnabled: true,
+        notificationTime: "07:00",
+        timezone: "UTC",
+        onboardingCompleted: false,
+      });
+
+      // Clear onboarding completion status from local storage
+      await removeOnboardingCompleted();
+
+      // Navigate back to onboarding
+      router.replace("/onboarding");
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error resetting preferences:", error);
+      // If reset fails, still try to go to onboarding
+      router.replace("/onboarding");
     }
   };
 
@@ -165,61 +202,9 @@ export const SettingsScreen: React.FC = () => {
               }
             />
           </View>
-
-          {preferences.notifications.enabled && (
-            <>
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={styles.settingTitle}>Notification Sound</Text>
-                  <Text style={styles.settingDescription}>
-                    Play sound for notifications
-                  </Text>
-                </View>
-                <Switch
-                  value={preferences.notifications.sound}
-                  onValueChange={(value) =>
-                    updateNotificationPreference("sound", value)
-                  }
-                  trackColor={{
-                    false: Colors.border,
-                    true: Colors.primary + "40",
-                  }}
-                  thumbColor={
-                    preferences.notifications.sound
-                      ? Colors.primary
-                      : Colors.mutedText
-                  }
-                />
-              </View>
-
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={styles.settingTitle}>Vibration</Text>
-                  <Text style={styles.settingDescription}>
-                    Vibrate for notifications
-                  </Text>
-                </View>
-                <Switch
-                  value={preferences.notifications.vibration}
-                  onValueChange={(value) =>
-                    updateNotificationPreference("vibration", value)
-                  }
-                  trackColor={{
-                    false: Colors.border,
-                    true: Colors.primary + "40",
-                  }}
-                  thumbColor={
-                    preferences.notifications.vibration
-                      ? Colors.primary
-                      : Colors.mutedText
-                  }
-                />
-              </View>
-            </>
-          )}
         </View>
 
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
 
           <View style={styles.settingRow}>
@@ -249,16 +234,19 @@ export const SettingsScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
 
-          <TouchableOpacity style={styles.settingRow} onPress={handleSignOut}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleResetPreferences}
+          >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Sign Out</Text>
+              <Text style={styles.settingTitle}>Reset Preferences</Text>
               <Text style={styles.settingDescription}>
-                Sign out of your account
+                Reset your quest preferences to default
               </Text>
             </View>
             <Text style={styles.signOutText}>→</Text>

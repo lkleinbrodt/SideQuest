@@ -2,14 +2,14 @@
   "expo": {
     "name": "SideQuest",
     "slug": "SideQuest",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/raccoon.png",
     "scheme": "sidequest",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/raccoon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -46,6 +46,12 @@
       "eas": {
         "projectId": "06202428-4625-46a1-a4f8-508263b6cfc5"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/06202428-4625-46a1-a4f8-508263b6cfc5"
     }
   }
 }

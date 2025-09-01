@@ -13,13 +13,10 @@ import { questService } from "@/api/services/questService";
 
 // State interface
 interface QuestState {
-  todayQuests: Quest[];
-  selectedQuests: Quest[];
-  completedQuests: Quest[];
-  skippedQuests: Quest[];
+  questBoard: Quest[];
   isLoading: boolean;
   error: string | null;
-  lastUpdated: string | null; // Store as ISO string for consistency
+  lastUpdated: string | null;
   preferences: QuestPreferences | null;
 }
 
@@ -27,28 +24,16 @@ interface QuestState {
 type QuestAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
-  | { type: "SET_TODAY_QUESTS"; payload: Quest[] }
-  | { type: "SELECT_QUEST"; payload: string }
-  | { type: "DESELECT_QUEST"; payload: string }
-  | {
-      type: "COMPLETE_QUEST";
-      payload: { questId: string; feedback: QuestFeedback };
-    }
-  | {
-      type: "SKIP_QUEST";
-      payload: { questId: string; feedback: QuestFeedback };
-    }
+  | { type: "SET_QUEST_BOARD"; payload: Quest[] }
+  | { type: "UPDATE_SINGLE_QUEST"; payload: Quest }
   | { type: "SET_PREFERENCES"; payload: QuestPreferences }
   | { type: "UPDATE_PREFERENCES"; payload: Partial<QuestPreferences> }
-  | { type: "RESET_QUESTS" }
+  | { type: "RESET_QUEST_BOARD" }
   | { type: "SET_LAST_UPDATED"; payload: string };
 
 // Initial state
 const initialState: QuestState = {
-  todayQuests: [],
-  selectedQuests: [],
-  completedQuests: [],
-  skippedQuests: [],
+  questBoard: [],
   isLoading: false,
   error: null,
   lastUpdated: null,
@@ -64,79 +49,18 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
     case "SET_ERROR":
       return { ...state, error: action.payload };
 
-    case "SET_TODAY_QUESTS":
+    case "SET_QUEST_BOARD":
       return {
         ...state,
-        todayQuests: action.payload,
-        selectedQuests: action.payload.filter((q) => q.selected),
-        completedQuests: action.payload.filter((q) => q.completed),
-        skippedQuests: action.payload.filter((q) => q.skipped),
+        questBoard: action.payload,
       };
 
-    case "SELECT_QUEST":
+    case "UPDATE_SINGLE_QUEST":
       return {
         ...state,
-        todayQuests: state.todayQuests.map((q) =>
-          q.id === action.payload ? { ...q, selected: true } : q
+        questBoard: state.questBoard.map((quest) =>
+          quest.id === action.payload.id ? action.payload : quest
         ),
-        selectedQuests: [
-          ...state.selectedQuests,
-          state.todayQuests.find((q) => q.id === action.payload)!,
-        ],
-      };
-
-    case "DESELECT_QUEST":
-      return {
-        ...state,
-        todayQuests: state.todayQuests.map((q) =>
-          q.id === action.payload ? { ...q, selected: false } : q
-        ),
-        selectedQuests: state.selectedQuests.filter(
-          (q) => q.id !== action.payload
-        ),
-      };
-
-    case "COMPLETE_QUEST":
-      return {
-        ...state,
-        todayQuests: state.todayQuests.map((q) =>
-          q.id === action.payload.questId
-            ? {
-                ...q,
-                completed: true,
-                completedAt: new Date(),
-                feedback: action.payload.feedback,
-              }
-            : q
-        ),
-        selectedQuests: state.selectedQuests.filter(
-          (q) => q.id !== action.payload.questId
-        ),
-        completedQuests: [
-          ...state.completedQuests,
-          state.todayQuests.find((q) => q.id === action.payload.questId)!,
-        ],
-      };
-
-    case "SKIP_QUEST":
-      return {
-        ...state,
-        todayQuests: state.todayQuests.map((q) =>
-          q.id === action.payload.questId
-            ? {
-                ...q,
-                skipped: true,
-                feedback: action.payload.feedback,
-              }
-            : q
-        ),
-        selectedQuests: state.selectedQuests.filter(
-          (q) => q.id !== action.payload.questId
-        ),
-        skippedQuests: [
-          ...state.skippedQuests,
-          state.todayQuests.find((q) => q.id === action.payload.questId)!,
-        ],
       };
 
     case "SET_PREFERENCES":
@@ -150,13 +74,10 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
           : null,
       };
 
-    case "RESET_QUESTS":
+    case "RESET_QUEST_BOARD":
       return {
         ...state,
-        todayQuests: [],
-        selectedQuests: [],
-        completedQuests: [],
-        skippedQuests: [],
+        questBoard: [],
         lastUpdated: null,
       };
 
@@ -171,12 +92,13 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
 // Context interface
 interface QuestContextType {
   state: QuestState;
-  generateDailyQuests: () => Promise<void>;
-  selectQuest: (questId: string) => Promise<void>;
-  deselectQuest: (questId: string) => Promise<void>;
-  completeQuest: (questId: string, feedback: QuestFeedback) => Promise<void>;
-  skipQuest: (questId: string, feedback: QuestFeedback) => Promise<void>;
-  refreshQuests: () => Promise<void>;
+  loadQuestBoard: () => Promise<void>;
+  refreshQuestBoard: () => Promise<void>;
+  updateQuestStatus: (
+    questId: string,
+    status: string,
+    feedback?: any
+  ) => Promise<void>;
   updatePreferences: (preferences: Partial<QuestPreferences>) => Promise<void>;
   loadPreferences: () => Promise<void>;
 }
@@ -189,154 +111,114 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [state, dispatch] = useReducer(questReducer, initialState);
-  const [isGeneratingQuests, setIsGeneratingQuests] = useState(false);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(false);
 
   // Load preferences on mount
+  // only if we are authenticated
   useEffect(() => {
     loadPreferences();
   }, []);
 
-  // Generate daily quests
-  const generateDailyQuests = async () => {
-    if (isGeneratingQuests) {
-      console.log("Quest generation already in progress, skipping...");
+  // Load quest board
+  const loadQuestBoard = async () => {
+    if (isLoadingBoard) {
+      console.log("Quest board loading already in progress, skipping...");
       return;
     }
 
     try {
-      setIsGeneratingQuests(true);
+      setIsLoadingBoard(true);
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_ERROR", payload: null });
 
-      console.log("Getting available quests...");
-      const preferences = await preferencesService.getQuestPreferences();
-      console.log("Preferences:", preferences);
-      const quests = await questService.getAvailableQuests(preferences);
+      console.log("Loading quest board...");
+      const board = await questService.getQuestBoard();
 
-      console.log(`Got ${quests.length} quests`);
-      dispatch({ type: "SET_TODAY_QUESTS", payload: quests });
+      console.log(`Got ${board.quests.length} quests from board`);
+      dispatch({ type: "SET_QUEST_BOARD", payload: board.quests });
       dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
     } catch (error) {
-      console.error("Error generating quests:", error);
+      console.error("Error loading quest board:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load quest board";
+      console.log("Setting error state:", errorMessage);
       dispatch({
         type: "SET_ERROR",
-        payload:
-          error instanceof Error ? error.message : "Failed to generate quests",
+        payload: errorMessage,
       });
+      // Clear the quest board when there's an error
+      dispatch({ type: "SET_QUEST_BOARD", payload: [] });
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
-      setIsGeneratingQuests(false);
+      setIsLoadingBoard(false);
     }
   };
 
-  // Select quest
-  const selectQuest = async (questId: string) => {
-    try {
-      // Update local state immediately for better UX
-      dispatch({ type: "SELECT_QUEST", payload: questId });
+  // Refresh quest board
+  const refreshQuestBoard = async () => {
+    if (isLoadingBoard) {
+      console.log("Quest board refresh already in progress, skipping...");
+      return;
+    }
 
-      // Submit to backend
-      const success = await questService.selectQuest(questId);
-      if (!success) {
-        console.warn(
-          "Failed to select quest on backend, reverting local state"
-        );
-        dispatch({ type: "DESELECT_QUEST", payload: questId });
-      }
+    try {
+      setIsLoadingBoard(true);
+      dispatch({ type: "SET_LOADING", payload: true });
+      dispatch({ type: "SET_ERROR", payload: null });
+
+      console.log("Refreshing quest board...");
+      const board = await questService.refreshQuestBoard();
+
+      console.log(
+        `Refreshed quest board, got ${board.quests.length} new quests`
+      );
+      dispatch({ type: "SET_QUEST_BOARD", payload: board.quests });
+      dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
     } catch (error) {
-      console.error("Error selecting quest:", error);
-      // Revert local state on error
-      dispatch({ type: "DESELECT_QUEST", payload: questId });
+      console.error("Error refreshing quest board:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh quest board";
+      console.log("Setting error state:", errorMessage);
+      dispatch({
+        type: "SET_ERROR",
+        payload: errorMessage,
+      });
+      // Clear the quest board when there's an error
+      dispatch({ type: "SET_QUEST_BOARD", payload: [] });
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+      setIsLoadingBoard(false);
     }
   };
 
-  // Deselect quest
-  const deselectQuest = async (questId: string) => {
+  // Consolidated quest status update
+  const updateQuestStatus = async (
+    questId: string,
+    status: string,
+    feedback?: any
+  ) => {
     try {
-      // Update local state immediately for better UX
-      dispatch({ type: "DESELECT_QUEST", payload: questId });
-
-      // Note: Backend doesn't have a deselect endpoint, so we just update local state
-      // If needed, we could implement this on the backend
-    } catch (error) {
-      console.error("Error deselecting quest:", error);
-    }
-  };
-
-  // Complete quest
-  const completeQuest = async (questId: string, feedback: QuestFeedback) => {
-    try {
-      // Update local state immediately for better UX
-      dispatch({ type: "COMPLETE_QUEST", payload: { questId, feedback } });
-
-      // Submit to backend
-      const success = await questService.submitQuestFeedback({
+      const updatedQuest = await questService.updateQuestStatus(
         questId,
-        feedback,
-      });
-      if (!success) {
-        console.warn("Failed to complete quest on backend");
-      }
+        status as any,
+        feedback
+      );
+      // Update the board with the single returned quest
+      dispatch({ type: "UPDATE_SINGLE_QUEST", payload: updatedQuest });
     } catch (error) {
-      console.error("Error completing quest:", error);
-      // Could revert state here if needed
-    }
-  };
-
-  // Skip quest
-  const skipQuest = async (questId: string, feedback: QuestFeedback) => {
-    try {
-      // Update local state immediately for better UX
-      dispatch({ type: "SKIP_QUEST", payload: { questId, feedback } });
-
-      // Submit to backend
-      const success = await questService.skipQuest(questId);
-      if (!success) {
-        console.warn("Failed to skip quest on backend");
-      }
-    } catch (error) {
-      console.error("Error skipping quest:", error);
-      // Could revert state here if needed
-    }
-  };
-
-  // Refresh quests
-  const refreshQuests = async () => {
-    if (isGeneratingQuests) {
-      console.log("Quest refresh already in progress, skipping...");
-      return;
-    }
-
-    try {
-      setIsGeneratingQuests(true);
-      dispatch({ type: "SET_LOADING", payload: true });
-      dispatch({ type: "SET_ERROR", payload: null });
-
-      console.log("Refreshing quests...");
-      const preferences = await preferencesService.getQuestPreferences();
-      console.log("Preferences:", preferences);
-      const quests = await questService.refreshQuests(preferences);
-
-      console.log(`Refreshed quests, got ${quests.length} new quests`);
-      dispatch({ type: "SET_TODAY_QUESTS", payload: quests });
-      dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
-    } catch (error) {
-      console.error("Error refreshing quests:", error);
-      dispatch({
-        type: "SET_ERROR",
-        payload:
-          error instanceof Error ? error.message : "Failed to refresh quests",
-      });
-    } finally {
-      dispatch({ type: "SET_LOADING", payload: false });
-      setIsGeneratingQuests(false);
+      console.error(`Error updating quest to ${status}:`, error);
+      const apiError = error as any;
+      // Optionally, dispatch an action to show a temporary error message to the user
+      dispatch({ type: "SET_ERROR", payload: apiError.message });
     }
   };
 
   // Update preferences
   const updatePreferences = async (preferences: Partial<QuestPreferences>) => {
     try {
-      await preferencesService.updateQuestPreferences(preferences);
+      await preferencesService.updateUserProfile(preferences);
       dispatch({ type: "UPDATE_PREFERENCES", payload: preferences });
     } catch (error) {
       console.error("Error updating preferences:", error);
@@ -346,7 +228,14 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
   // Load preferences
   const loadPreferences = async () => {
     try {
-      const preferences = await preferencesService.getQuestPreferences();
+      const profile = await preferencesService.getUserProfile();
+      const preferences: QuestPreferences = {
+        categories: profile.categories,
+        difficulty: profile.difficulty,
+        maxTime: profile.maxTime,
+        includeCompleted: profile.includeCompleted,
+        includeSkipped: profile.includeSkipped,
+      };
       dispatch({ type: "SET_PREFERENCES", payload: preferences });
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -355,12 +244,9 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
 
   const value: QuestContextType = {
     state,
-    generateDailyQuests,
-    selectQuest,
-    deselectQuest,
-    completeQuest,
-    skipQuest,
-    refreshQuests,
+    loadQuestBoard,
+    refreshQuestBoard,
+    updateQuestStatus,
     updatePreferences,
     loadPreferences,
   };

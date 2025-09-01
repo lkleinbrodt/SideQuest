@@ -8,24 +8,20 @@ import { useAuth } from "@/auth/AuthContext";
 export default function TabLayout() {
   const { user, loading } = useAuth();
 
-  // Redirect to welcome screen if not authenticated
+  // Redirect to onboarding if not authenticated
   if (loading) {
     return null;
   }
 
   if (!user) {
-    return <Redirect href="/welcome" />;
+    return <Redirect href="/onboarding" />;
   }
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        headerStyle: {
-          backgroundColor: Colors.white,
-        },
-        headerShadowVisible: false,
-        headerTintColor: Colors.primary,
+        headerShown: false,
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.border,

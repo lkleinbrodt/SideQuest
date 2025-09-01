@@ -13,32 +13,45 @@ export const OnboardingWelcome: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🎯</Text>
+          <Image
+            source={require("@/assets/raccoon.png")}
+            resizeMode="contain"
+            style={styles.logo}
+          />
         </View>
 
         <Text style={styles.title}>Welcome to SideQuest!</Text>
-        <Text style={styles.subtitle}>Your daily micro-adventures await</Text>
-
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.description}>
-            Every morning, you'll receive three personalized quests designed to
-            add novelty, productivity, and joy to your day — without guilt or
-            pressure.
-          </Text>
-        </View>
 
         <View style={styles.featuresContainer}>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>✨</Text>
-            <Text style={styles.featureText}>Personalized for you</Text>
+            <Image
+              source={require("@/assets/category-badges/outdoors_1_transparent.png")}
+              style={styles.featureIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.featureText}>
+              Get daily, personalized quests
+            </Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🎯</Text>
-            <Text style={styles.featureText}>Quick & achievable</Text>
+            <Image
+              source={require("@/assets/category-badges/hobbies_1_transparent.png")}
+              style={styles.featureIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.featureText}>
+              Accept what you like, skip what you don't
+            </Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🌅</Text>
-            <Text style={styles.featureText}>Fresh every morning</Text>
+            <Image
+              source={require("@/assets/category-badges/mindfulness_1_transparent.png")}
+              style={styles.featureIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.featureText}>
+              Earn points for each quest you complete
+            </Text>
           </View>
         </View>
 
@@ -65,16 +78,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
+    width: 240,
+    height: 240,
     borderRadius: 60,
-    backgroundColor: Colors.questCard,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
   },
   logo: {
-    fontSize: 60,
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontSize: 28,
@@ -107,12 +120,10 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    paddingHorizontal: 16,
   },
   featureIcon: {
-    fontSize: 24,
-    marginRight: 16,
+    width: 82,
+    height: 82,
   },
   featureText: {
     fontSize: 16,

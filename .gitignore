@@ -1,8 +1,10 @@
+*.ipa
 memory-bank/
 .DS_Store
 .cursor/
 .specstory/
-
+icons/
+icons_processed/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

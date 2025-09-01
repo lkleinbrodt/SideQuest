@@ -1,5 +1,5 @@
 import { ENDPOINTS } from "@/api/config";
-import { apiClient } from "@/api/client";
+import client from "@/api/client";
 
 export interface AppleSignInCredential {
   identityToken: string;
@@ -13,19 +13,13 @@ export interface AppleSignInCredential {
 }
 
 export interface AuthResponse {
-  success: boolean;
-  data?: {
-    access_token: string;
-    user: {
-      id: string;
-      name?: string;
-      email?: string;
-      image?: string;
-      role?: string;
-    };
-  };
-  error?: {
-    message: string;
+  accessToken: string;
+  user: {
+    id: string;
+    name?: string;
+    email?: string;
+    image?: string;
+    role?: string;
   };
 }
 
@@ -44,23 +38,10 @@ class AuthService {
   async signInWithApple(
     credential: AppleSignInCredential
   ): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post<AuthResponse>(
-        ENDPOINTS.APPLE_SIGNIN,
-        {
-          appleIdToken: credential,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(response.error?.message || "Authentication failed");
-      }
-
-      return response.data!;
-    } catch (error) {
-      console.error("Apple Sign-In error:", error);
-      throw error;
-    }
+    // The client now throws on error, so no try/catch is needed here.
+    return client.post<AuthResponse>(ENDPOINTS.APPLE_SIGNIN, {
+      appleIdToken: credential,
+    });
   }
 
   /**
@@ -69,8 +50,8 @@ class AuthService {
   async validateToken(token: string): Promise<boolean> {
     try {
       // We can use any protected endpoint to validate the token
-      const response = await apiClient.get("/sidequest/health");
-      return response.ok;
+      await client.get("/sidequest/health");
+      return true;
     } catch (error) {
       console.error("Token validation error:", error);
       return false;
@@ -82,15 +63,10 @@ class AuthService {
    */
   async refreshToken(): Promise<string | null> {
     try {
-      const response = await apiClient.post<{ access_token: string }>(
+      const response = await client.post<{ accessToken: string }>(
         ENDPOINTS.REFRESH_TOKEN
       );
-
-      if (!response.ok) {
-        throw new Error(response.error?.message || "Token refresh failed");
-      }
-
-      return response.data!.access_token;
+      return response.accessToken;
     } catch (error) {
       console.error("Token refresh error:", error);
       return null;

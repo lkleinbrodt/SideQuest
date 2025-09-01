@@ -1,5 +1,6 @@
 import {
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -20,26 +21,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, signOut } = useAuth();
   const router = useRouter();
-
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [dailyReminder, setDailyReminder] = React.useState(true);
-  const [weeklyReport, setWeeklyReport] = React.useState(false);
-
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: signOut,
-      },
-    ]);
-  };
 
   const handleResetPreferences = () => {
     Alert.alert(
@@ -73,35 +56,21 @@ export default function ProfileScreen() {
       >
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>🎯</Text>
+            <Image
+              source={require("@/assets/raccoon.png")}
+              style={styles.avatar}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.userName}>{user?.name || "Adventurer"}</Text>
-          <Text style={styles.userEmail}>
-            {user?.email || "adventurer@sidequest.app"}
-          </Text>
+          <Text style={styles.userName}>Profile</Text>
         </View>
 
         <View style={styles.settingsContainer}>
           {/* Notifications Section */}
-          <Card variant="default" style={styles.settingsCard}>
+          {/* <Card variant="default" style={styles.settingsCard}>
             <View style={styles.sectionHeader}>
               <Ionicons name="notifications" size={24} color={Colors.primary} />
               <Text style={styles.sectionTitle}>Notifications</Text>
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Daily Quest Reminders</Text>
-                <Text style={styles.settingDescription}>
-                  Get notified when new quests are available
-                </Text>
-              </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{ false: Colors.lightGray, true: Colors.primary }}
-                thumbColor={Colors.white}
-              />
             </View>
 
             <View style={styles.settingItem}>
@@ -116,26 +85,9 @@ export default function ProfileScreen() {
                 onValueChange={setDailyReminder}
                 trackColor={{ false: Colors.lightGray, true: Colors.primary }}
                 thumbColor={Colors.white}
-                disabled={!notificationsEnabled}
               />
             </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Weekly Report</Text>
-                <Text style={styles.settingDescription}>
-                  Get a summary of your quest completion
-                </Text>
-              </View>
-              <Switch
-                value={weeklyReport}
-                onValueChange={setWeeklyReport}
-                trackColor={{ false: Colors.lightGray, true: Colors.primary }}
-                thumbColor={Colors.white}
-                disabled={!notificationsEnabled}
-              />
-            </View>
-          </Card>
+          </Card> */}
 
           {/* Preferences Section */}
           <Card variant="default" style={styles.settingsCard}>
@@ -161,80 +113,6 @@ export default function ProfileScreen() {
               />
             </TouchableOpacity>
           </Card>
-
-          {/* Data Section */}
-          <Card variant="default" style={styles.settingsCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="document-text" size={24} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Data & Privacy</Text>
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Export Data</Text>
-                <Text style={styles.settingDescription}>
-                  Download your quest history and preferences
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Privacy Policy</Text>
-                <Text style={styles.settingDescription}>
-                  Read our privacy policy
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Terms of Service</Text>
-                <Text style={styles.settingDescription}>
-                  Read our terms of service
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </View>
-          </Card>
-
-          {/* Actions Section */}
-          <View style={styles.actionsContainer}>
-            <Button
-              title="Reset Preferences"
-              onPress={handleResetPreferences}
-              variant="outline"
-              style={styles.actionButton}
-            />
-
-            <Button
-              title="Sign Out"
-              onPress={handleSignOut}
-              variant="outline"
-              style={styles.actionButton}
-            />
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>SideQuest v1.0.0</Text>
-            <Text style={styles.footerText}>
-              Made with ❤️ for daily adventures
-            </Text>
-          </View>
         </View>
       </ScrollView>
     </View>
@@ -259,13 +137,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.questCard,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: Layout.spacing.m,
   },
   avatar: {
-    fontSize: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Layout.spacing.m,
   },
   userName: {
     fontSize: 24,

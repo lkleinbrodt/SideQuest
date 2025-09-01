@@ -1,15 +1,18 @@
-import React from "react";
 import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  ViewStyle,
-  TextStyle,
   StyleProp,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from "react-native";
+
 import { Colors } from "@/constants/Colors";
+import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
+import React from "react";
 
 interface ButtonProps {
   title: string;
@@ -20,6 +23,11 @@ interface ButtonProps {
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  icon?: {
+    name: keyof typeof Ionicons.glyphMap;
+    size?: number;
+    position?: "left" | "right";
+  };
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -31,6 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   style,
   textStyle,
+  icon,
 }) => {
   const getBackgroundColor = () => {
     if (disabled) return Colors.lightGray;
@@ -125,6 +134,88 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  const getIconSize = () => {
+    switch (size) {
+      case "small":
+        return 16;
+      case "medium":
+        return 18;
+      case "large":
+        return 20;
+      default:
+        return 18;
+    }
+  };
+
+  const renderContent = () => {
+    if (loading) {
+      return <ActivityIndicator color={getTextColor()} />;
+    }
+
+    const iconSize = icon?.size || getIconSize();
+    const iconColor = getTextColor();
+
+    if (icon) {
+      const iconElement = (
+        <Ionicons name={icon.name} size={iconSize} color={iconColor} />
+      );
+
+      if (icon.position === "right") {
+        return (
+          <View style={styles.contentContainer}>
+            <Text
+              style={[
+                styles.text,
+                {
+                  color: getTextColor(),
+                  fontSize: getFontSize(),
+                },
+                textStyle,
+              ]}
+            >
+              {title}
+            </Text>
+            {iconElement}
+          </View>
+        );
+      } else {
+        // Default to left position
+        return (
+          <View style={styles.contentContainer}>
+            {iconElement}
+            <Text
+              style={[
+                styles.text,
+                {
+                  color: getTextColor(),
+                  fontSize: getFontSize(),
+                },
+                textStyle,
+              ]}
+            >
+              {title}
+            </Text>
+          </View>
+        );
+      }
+    }
+
+    return (
+      <Text
+        style={[
+          styles.text,
+          {
+            color: getTextColor(),
+            fontSize: getFontSize(),
+          },
+          textStyle,
+        ]}
+      >
+        {title}
+      </Text>
+    );
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -142,20 +233,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       activeOpacity={0.8}
     >
-      {loading ? (
-        <ActivityIndicator color={getTextColor()} />
-      ) : (
-        <Text style={[
-          styles.text,
-          {
-            color: getTextColor(),
-            fontSize: getFontSize(),
-          },
-          textStyle,
-        ]}>
-          {title}
-        </Text>
-      )}
+      {renderContent()}
     </TouchableOpacity>
   );
 };
@@ -166,6 +244,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minWidth: 80,
+  },
+  contentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   text: {
     fontWeight: "600",

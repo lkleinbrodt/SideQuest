@@ -10,6 +10,10 @@ import {
   View,
 } from "react-native";
 import React, { useEffect, useState } from "react";
+import {
+  getOnboardingCompleted,
+  storeOnboardingCompleted,
+} from "@/auth/storage";
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
@@ -19,11 +23,57 @@ import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+/**
+ * Welcome Screen - Currently replaced by auto-login flow
+ *
+ * FUTURE ENHANCEMENT: This screen can be re-enabled to offer users a choice between:
+ * - Apple Sign-In (for users who want to sync across devices)
+ * - Continue anonymously (for users who prefer device-only experience)
+ *
+ * To re-enable:
+ * 1. Uncomment the welcome screen in (auth)/_layout.tsx
+ * 2. Modify the auto-login component to redirect here instead of directly to anonymous login
+ * 3. Update the auto-login component to show options instead of automatically proceeding
+ *
+ * Example flow:
+ * - Auto-login checks for existing Apple tokens
+ * - If found, proceed with Apple auth
+ * - If not found, show welcome screen with options
+ * - User chooses Apple Sign-In or Continue anonymously
+ */
 export default function WelcomeScreen() {
-  const { signInWithApple } = useAuth();
+  const { signInWithApple, signInAnonymously } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleAnonymousSignIn = async () => {
+    try {
+      setIsSigningIn(true);
+
+      // Sign in anonymously
+      await signInAnonymously();
+
+      // Check onboarding status from local storage
+      const isOnboardingComplete = await getOnboardingCompleted();
+      if (isOnboardingComplete) {
+        router.replace("/(tabs)");
+      } else {
+        router.replace("/onboarding");
+      }
+    } catch (error) {
+      console.error("Anonymous sign-in error:", error);
+
+      // Show error to user
+      Alert.alert(
+        "Sign In Failed",
+        "There was an error signing in anonymously. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
 
   const handleSignIn = async () => {
     try {
@@ -40,9 +90,8 @@ export default function WelcomeScreen() {
       // Authenticate with backend
       await signInWithApple(credential);
 
-      // Check if user needs to complete onboarding
-      const isOnboardingComplete =
-        await preferencesService.isOnboardingComplete();
+      // Check onboarding status from local storage
+      const isOnboardingComplete = await getOnboardingCompleted();
       if (isOnboardingComplete) {
         router.replace("/(tabs)");
       } else {
@@ -79,11 +128,15 @@ export default function WelcomeScreen() {
 
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🎯</Text>
+          <Image
+            source={require("@/assets/raccoon.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <Text style={styles.title}>SideQuest</Text>
-        <Text style={styles.subtitle}>Daily micro-adventures await</Text>
+        <Text style={styles.subtitle}>Adventure awaits</Text>
 
         {Platform.OS === "ios" && (
           <AppleAuthentication.AppleAuthenticationButton
@@ -99,14 +152,12 @@ export default function WelcomeScreen() {
           />
         )}
 
-        {Platform.OS !== "ios" && (
-          <Button
-            title="Get Started"
-            onPress={handleSignIn}
-            size="large"
-            style={styles.getStartedButton}
-          />
-        )}
+        <Button
+          title="Continue anonymously"
+          onPress={isSigningIn ? () => {} : handleAnonymousSignIn}
+          size="medium"
+          style={[styles.getStartedButton, isSigningIn && { opacity: 0.5 }]}
+        />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -147,16 +198,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: Colors.questCard,
+    width: 360,
+    height: 360,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
   },
   logo: {
-    fontSize: 60,
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontSize: 32,
@@ -200,7 +249,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   getStartedButton: {
-    width: "100%",
+    width: "50%",
     marginBottom: 16,
   },
   footer: {
