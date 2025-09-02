@@ -52,6 +52,36 @@ class QuestService {
   }> {
     return client.get("/sidequest/quests/history", params);
   }
+
+  // Get history statistics (streak, success rate, etc.)
+  async getHistoryStats(): Promise<{
+    streak: number;
+    successRate: number;
+    mostCompletedCategory: string | null;
+    topTags: Array<{ tag: string; count: number }>;
+    totalCompleted: number;
+    totalAccepted: number;
+  }> {
+    return client.get("/sidequest/history/stats");
+  }
+
+  // Get 7-day history
+  async get7DayHistory(): Promise<{
+    history: Array<{
+      date: string;
+      quests: Array<{
+        id: string;
+        text: string;
+        category: string | null;
+        completed: boolean;
+        skipped: boolean;
+      }>;
+      completedCount: number;
+      totalCount: number;
+    }>;
+  }> {
+    return client.get("/sidequest/history/7day");
+  }
 }
 
 export const questService = new QuestService();

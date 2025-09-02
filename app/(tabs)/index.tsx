@@ -110,15 +110,6 @@ export default function QuestBoardScreen() {
     return `${potential} potential • ${active} active`;
   };
 
-  // Debug logging
-  console.log("QuestBoard render state:", {
-    isLoading: state.isLoading,
-    error: state.error,
-    questBoardLength: state.questBoard.length,
-    potentialQuests: getPotentialQuests().length,
-    activeQuests: getActiveQuests().length,
-  });
-
   if (state.isLoading && state.questBoard.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>

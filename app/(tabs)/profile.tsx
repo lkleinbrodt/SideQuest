@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: Layout.spacing.l,
+    marginTop: Layout.spacing.m,
     alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,

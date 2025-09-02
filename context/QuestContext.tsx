@@ -8,7 +8,6 @@ import React, {
 } from "react";
 
 import { Quest } from "@/types/types";
-import { profileService } from "@/api/services/profileService";
 import { questService } from "@/api/services/questService";
 
 // State interface
@@ -108,10 +107,8 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
       dispatch({ type: "SET_LOADING", payload: true });
       dispatch({ type: "SET_ERROR", payload: null });
 
-      console.log("Loading quest board...");
       const board = await questService.getQuestBoard();
 
-      console.log(`Got ${board.quests.length} quests from board`);
       dispatch({ type: "SET_QUEST_BOARD", payload: board.quests });
       dispatch({ type: "SET_LAST_UPDATED", payload: new Date().toISOString() });
     } catch (error) {

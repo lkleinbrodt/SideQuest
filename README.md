@@ -173,4 +173,3 @@ Action Plan:
 3. Add UX to quickly vote on potential quests and get feedback. Will need a new data table to store votes.
 4. Add notifications
 5. Adapt onboarding flow based on 2-3
-6. Implement the history + stats page
