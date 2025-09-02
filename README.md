@@ -6,27 +6,23 @@ _A playful, minimalist app for daily micro-adventures._
 
 ## Overview
 
-**SideQuest** is a mobile app that delivers **three personalized “side quests” every morning**.  
-These quests are small, fun, achievable challenges that help users add novelty, productivity, and joy to their day — without guilt or pressure.
+**SideQuest** is a mobile app that delivers personalized side quests that the user can take on. These quests are small, fun, achievable challenges that help users add novelty, productivity, and joy to their day — without guilt or pressure.
 
 Users can:
 
 - Receive a fresh set of quests each morning (auto-generated with AI).
 - Pick which quests to pursue.
-- Mark them complete (or skipped) later in the day.
-- Give thumbs-up/thumbs-down feedback to refine future quests.
-
-The app is **single-user focused** at first (to keep scope tight), but we’ll build with real persistence and APIs so it can grow into a multi-user/social product if desired.
+- Mark them complete (or abandoned) later in the day.
+- Give feedback to refine future quests.
 
 ---
 
 ## Product Goals
 
 - **Delight, not guilt:** SideQuest is about fun nudges, not chores.
-- **Tiny adventures:** Each quest should take ≤15 minutes.
 - **Personalized:** Quests reflect user preferences and past feedback.
 - **Varied:** No two mornings feel the same.
-- **Lightweight build:** Weekend-sized MVP using React Native, Flask, Supabase, and an LLM backend.
+- **Fun** The most important thing is that we give quests that actually are fun + positive in the user's life.
 
 ---
 
@@ -34,45 +30,58 @@ The app is **single-user focused** at first (to keep scope tight), but we’ll b
 
 ### 1. Onboarding
 
-- Present ~10 example quests across diverse categories (fitness, social, mindfulness, chores, hobbies, outdoors, etc.).
-- User gives thumbs-up/thumbs-down for each.
+## Current State
+
+- User is presented with the list of available categories and selects which they are interested in.
+- User provides the difficulty, and desired time for quests.
+- User opts in to notifications for quests.
+- Preferences saved to db, user is moved to main app.
+
+## Desired State
+
+- User selects which categories they are interested in
+- We show them ~5-10 prime example quests based on their selections, and the user quickly swipes through them to say which they like or dislike (left or right swipe)
+- We use those as a cold start to seed their preferences.
 - User optionally adds a **“Preferences Prompt”** in free text (e.g. _“I work from home, have a big dog, vegetarian household, limited time on weekdays”_).
-- Save preferences and initial positive/negative examples.
+- Save preferences and initial positive/negative examples, move to main app.
 
-### 2. Morning Quest Generation
+### 2. Quest Board Management
 
-- At ~7:00 AM local time, SideQuest generates **three quests**.
-- Generation logic uses:
-  - User preferences (prompt + category thumbs).
-  - Past likes/dislikes and completions.
-  - Diversity rules (no duplicate categories/verbs).
-  - Time context (weekday vs weekend).
-- If LLM call fails, fallback to curated pool of 60+ pre-seeded quests.
-
-### 3. Quest Selection & Feedback
-
+- Whenever a user opens their app / refreshes the board, we check if the board needs a refresh. Boards are stale each day at midnight in the user's timezone.
+- See below for refresh logic
+- Show the user their new board
 - User sees 3 quest cards. Options:
-  - **Pick** quests to pursue (0–3).
-  - **Thumbs up/down** any quest, regardless of selection.
-  - **Swap** a card for a new suggestion (1 reroll per card).
+  - **Accept** quests to pursue (0–3).
+  - **Decline** quests to pursue (0–3).
+- Accepted quests are moved to the active quests tab.
+- Declined quests are removed from the board.
 
 ### 4. Completion & Reflection
 
-- Later in the day, user marks quests as **Done** or **Skipped**.
-- Optionally add a short note (e.g. why skipped, or a reflection).
+- Later in the day, user marks quests as **Completed** or **Abandoned**.
+- Optionally add a short note (e.g. why abandoned, or a reflection).
 
 ### 5. Feedback Loop
 
-- Store explicit thumbs and implicit signals (done = good, skipped = mild negative).
+- Implicit signals (accepted, declined, completed, abandoned) are used to update the user's preferences.
+- Explicit feedback (thumbs up, thumbs down, comment) is also used to update the user's preferences.
 - Next day’s generation is biased toward tags/phrases from positive feedback and avoids negatives.
 - Maintain diversity and recency rules.
+
+### 6. History + Stats (not yet implemented)
+
+- A history page shows your quest history
+- "Streak" = how many days in a row you've completed quests
+- 7 day history. Shows last 7 days and a preview of the quests you've completed.
+- "Success Rate" = percentage of accepted quests you've completed
+- "Most Completed Category" = the category you've completed the most quests in
+- "Top Tags" = the tags you've completed the most quests in
 
 ---
 
 ## Product Guardrails
 
 - **Tone:** Whimsical, light, indie-styled.
-- **Scope:** ≤15 minutes per quest.
 - **Constraints:** Respect preferences (e.g. vegetarian, has dog, avoid weather-incompatible tasks if integrated later).
 - **Diversity:** Avoid repeating same category/verb within 7 days.
 - **Privacy:** Store minimal data. No microphones, no GPS.
@@ -86,7 +95,7 @@ The app is **single-user focused** at first (to keep scope tight), but we’ll b
 - **Frontend:** React Native + Expo (TypeScript).
 - **Backend:** Flask (Python) — orchestrates quest generation and stores feedback.
 - **Database:** Supabase (Postgres).
-- **LLM:** OpenAI API (or any preferred LLM endpoint).
+- **LLM:** OpenRouter
 - **Notifications:** Expo Notifications for daily reminders and evening nudges.
 - **Scheduling:**
   - Client: Expo Task Manager triggers daily fetch.
@@ -104,149 +113,59 @@ The app is **single-user focused** at first (to keep scope tight), but we’ll b
 
 ## Data Model (Supabase)
 
-**users**
+### Core Tables
 
-- id, created_at, timezone, optional name
+**`sidequest_users`** - User preferences and settings
 
-**preferences**
+- `user_id` (FK to main user table)
+- `categories` (JSON array of selected categories)
+- `difficulty` (easy/medium/hard)
+- `max_time` (minutes, default 15)
+- `include_completed/skipped` (boolean flags)
+- `notifications_enabled`, `notification_time`, `timezone`
+- `onboarding_completed`, `last_quest_generation`
 
-- user_id (FK)
-- free_text_prompt
-- category_weights JSONB (tag → score)
-- quiet_hours JSONB
+**`sidequest_quests`** - Individual quest instances
 
-**quest_templates**
+- `user_id`, `quest_board_id` (FKs)
+- `text`, `category`, `estimated_time`, `difficulty`, `tags` (JSON)
+- `status` (potential/accepted/completed/failed/abandoned/declined)
+- `completed_at`, `feedback_rating`, `feedback_comment`, `time_spent`
+- `generated_at`, `expires_at`, `model_used`, `fallback_used`
 
-- id, text, tags JSONB, source ENUM['curated','llm'], active BOOL
+**`sidequest_quest_boards`** - Daily quest boards
 
-**daily_sets**
+- `user_id` (FK)
+- `last_refreshed`, `is_active`
+- Contains 3 quests per day, refreshed at midnight user timezone
 
-- id, user_id, date, generated_at, items JSONB
-- items = [{quest_id?, text, tags, source}]
+**`sidequest_generation_logs`** - Analytics for quest generation
 
-**feedback**
+- `user_id`, `request_preferences` (JSON), `context_data` (JSON)
+- `quests_generated`, `model_used`, `fallback_used`
+- `generation_time_ms`, `tokens_used`
 
-- id, user_id, quest_text_hash, tags JSONB
-- thumb ENUM['up','down'], created_at
+### Enums
 
-**selections**
+- **QuestCategory**: fitness, social, mindfulness, chores, hobbies, outdoors, learning, creativity
+- **QuestDifficulty**: easy, medium, hard
+- **QuestRating**: thumbs_up, thumbs_down
+- **QuestStatus**: potential, accepted, completed, failed, abandoned, declined
 
-- id, user_id, daily_set_id, item_idx, selected BOOL, swapped BOOL
+# TODO:
 
-**completions**
+1. User's timezone is not properly set in the db
+2. Improve the quest generation logic!
+3. Add the history + stats page
+4. Add notifications to check quest board if you haven't yet
+5. Improve the onboarding flow
+6. Improve user preference management
 
-- id, user_id, daily_set_id, item_idx
-- status ENUM['done','skipped'], note TEXT, completed_at
+Action Plan:
 
----
-
-## Personalization Logic
-
-- **Tag Scores:** Track like/dislike per tag with decay (0.95/week).
-- **Scoring:** +2 thumbs-up, +1 done, −2 thumbs-down, −1 skipped.
-- **Diversity:** Softmax sample tags with temperature (τ≈0.8).
-- **Recency:** Avoid exact text repeats within 30 days.
-- **Context Awareness:** Bias to time/day context (weekday, weekend, morning/evening available time).
-
----
-
-## Prompt Design
-
-**System Prompt:**
-
-You generate playful, short “side quests” for a user.
-Constraints:
-• 5–15 minutes
-• Whimsical, zero shame
-• No medical, financial, or dangerous advice
-Output a JSON array of 3 quests with fields {text, tags}.
-
-**User Prompt Template:**
-
-Preferences:
-Recent positives: <3 examples>
-Recent negatives: <2 examples>
-Context: weekday=Tue, WFH=true, has_dog=true, break_times=12-1
-Generate 3 distinct quests with varied categories.
-
-**Example Output:**
-
-```json
-{
-  "text": "Text your hiking buddy to pick a trail for this weekend",
-  "tags": ["social", "outdoors", "5-10min"]
-}
-```
-
-## UI/UX
-
-### Onboarding
-
-- Stack of example quests → thumbs up/down.
-- Free-text prompt field ("Tell us your vibe").
-
-### Daily Deck
-
-- 3 quest cards with:
-  - Big title (quest text).
-  - Buttons: Pick, Swap, 👍, 👎.
-  - Footer with today's picks and "Mark Done."
-
-### History
-
-- Scrollable list of past 7 days.
-- Completion stats.
-
-### Settings
-
-- Edit preferences.
-- Adjust reminder time.
-- Enable/disable quest categories.
-
----
-
-## Success Metrics
-
-- Daily Open Rate (did notification → open happen?)
-- Selection Rate (# quests selected per day)
-- Completion Rate (# quests completed / selected)
-- Quest Quality (thumbs_up − thumbs_down / total).
-
----
-
-## Edge Cases
-
-- 0 quests selected → still log thumbs, deliver "micro-win" next morning.
-- Generation fails → fallback to curated pool.
-- Quests always tied to user's timezone date.
-- Idempotent fetch (GET /today) ensures same quests all day.
-
----
-
-## Out of Scope (MVP)
-
-- Social features (leaderboards, sharing).
-- ML fine-tuning beyond tag weighting.
-- Calendar/weather integrations.
-- Heavy gamification (streaks, badges, points).
-
----
-
-## Build Plan (Weekend MVP)
-
-### Day 1
-
-- Expo skeleton project.
-- Supabase schema.
-- Flask backend with /generate_daily + curated pool.
-- Onboarding UI with thumbs + preferences.
-
-### Day 2
-
-- Daily Deck UI with cards, select/swap/thumb.
-- Completion + History screens.
-- Notifications at 7:00 AM.
-- LLM integration + fallback logic.
-- Polish empty/error states.
-
----
+1. Ensure user's timezone is properly set in the db
+2. Improve the profile page to allow you to control all the right preferences. Improve preference management in general.
+3. Add UX to quickly vote on potential quests and get feedback. Will need a new data table to store votes.
+4. Add notifications
+5. Adapt onboarding flow based on 2-3
+6. Implement the history + stats page

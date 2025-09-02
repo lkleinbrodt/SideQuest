@@ -15,7 +15,10 @@ import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import React from "react";
+import client from "@/api/client";
+import { preferencesService } from "@/api/services/preferencesService";
 import { useAuth } from "@/auth/AuthContext";
+import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
