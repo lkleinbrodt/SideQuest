@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "@/auth/AuthContext";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { OnboardingProvider } from "@/context/OnboardingContext";
 import { QuestProvider } from "@/context/QuestContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -53,23 +54,25 @@ function RootLayoutNav() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <QuestProvider>
-          <OnboardingProvider>
-            <Stack>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(tabs)"
-                options={{
-                  headerShown: false,
-                  animation: "fade",
-                  headerBackTitle: "Back",
-                }}
-              />
-            </Stack>
-          </OnboardingProvider>
-        </QuestProvider>
-      </AuthProvider>
+      <GestureHandlerRootView>
+        <AuthProvider>
+          <QuestProvider>
+            <OnboardingProvider>
+              <Stack>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                    animation: "fade",
+                    headerBackTitle: "Back",
+                  }}
+                />
+              </Stack>
+            </OnboardingProvider>
+          </QuestProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
     </SafeAreaProvider>
   );
 }

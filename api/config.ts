@@ -38,4 +38,10 @@ export const ENDPOINTS = {
   APPLE_SIGNIN: "/sidequest/auth/apple/signin",
   ANONYMOUS_SIGNIN: "/sidequest/auth/anonymous/signin",
   REFRESH_TOKEN: "/auth/refresh",
+
+  // Voting
+  VOTING_QUESTS: "/sidequest/voting/quests",
+  VOTING_VOTE: "/sidequest/voting/vote",
+  VOTING_MY_VOTES: "/sidequest/voting/my-votes",
+  VOTING_STATS: "/sidequest/voting/stats",
 } as const;

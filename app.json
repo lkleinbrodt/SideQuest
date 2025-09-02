@@ -26,7 +26,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.lkleinbrodt.SideQuest"
     },
     "web": {
       "bundler": "metro",
@@ -60,9 +61,7 @@
         "projectId": "06202428-4625-46a1-a4f8-508263b6cfc5"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/06202428-4625-46a1-a4f8-508263b6cfc5"
     }

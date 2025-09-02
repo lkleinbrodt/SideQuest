@@ -56,6 +56,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="vote"
+        options={{
+          title: "Vote",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "thumbs-up" : "thumbs-up-outline"}
+              color={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
