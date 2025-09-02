@@ -9,7 +9,7 @@ import {
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
-import { preferencesService } from "@/api/services/preferencesService";
+import { profileService } from "@/api/services/profileService";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "expo-router";
 

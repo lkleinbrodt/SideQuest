@@ -163,8 +163,13 @@ Users can:
 
 Action Plan:
 
-1. Ensure user's timezone is properly set in the db
-2. Improve the profile page to allow you to control all the right preferences. Improve preference management in general.
+1. Redo User Preferences UI and Logic _DONE_
+
+- Clear out necessary preference context from the frontend
+- Build a preference management component
+- Use that component in the onboarding and settings screens
+- Ensure user's timezone is properly handled
+
 3. Add UX to quickly vote on potential quests and get feedback. Will need a new data table to store votes.
 4. Add notifications
 5. Adapt onboarding flow based on 2-3

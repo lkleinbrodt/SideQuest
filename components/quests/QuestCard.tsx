@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Quest, QuestFeedback } from "@/types/quest";
+import { Quest, QuestFeedback } from "@/types/types";
 import React, { useState } from "react";
 
 import { Button } from "@/components/common/Button";
@@ -14,7 +14,7 @@ import { Card } from "@/components/common/Card";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
-import { QuestCategory } from "@/types/quest";
+import { QuestCategory } from "@/types/types";
 import { QuestCompletionModal } from "./QuestCompletionModal";
 
 const BADGE_SIZE = 40;

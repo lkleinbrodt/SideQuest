@@ -1,4 +1,3 @@
-import { Quest, QuestFeedback, QuestPreferences } from "@/types/quest";
 import React, {
   ReactNode,
   createContext,
@@ -8,7 +7,8 @@ import React, {
   useState,
 } from "react";
 
-import { preferencesService } from "@/api/services/preferencesService";
+import { Quest } from "@/types/types";
+import { profileService } from "@/api/services/profileService";
 import { questService } from "@/api/services/questService";
 
 // State interface
@@ -17,7 +17,6 @@ interface QuestState {
   isLoading: boolean;
   error: string | null;
   lastUpdated: string | null;
-  preferences: QuestPreferences | null;
 }
 
 // Action types
@@ -26,8 +25,6 @@ type QuestAction =
   | { type: "SET_ERROR"; payload: string | null }
   | { type: "SET_QUEST_BOARD"; payload: Quest[] }
   | { type: "UPDATE_SINGLE_QUEST"; payload: Quest }
-  | { type: "SET_PREFERENCES"; payload: QuestPreferences }
-  | { type: "UPDATE_PREFERENCES"; payload: Partial<QuestPreferences> }
   | { type: "RESET_QUEST_BOARD" }
   | { type: "SET_LAST_UPDATED"; payload: string };
 
@@ -37,7 +34,6 @@ const initialState: QuestState = {
   isLoading: false,
   error: null,
   lastUpdated: null,
-  preferences: null,
 };
 
 // Reducer function
@@ -61,17 +57,6 @@ function questReducer(state: QuestState, action: QuestAction): QuestState {
         questBoard: state.questBoard.map((quest) =>
           quest.id === action.payload.id ? action.payload : quest
         ),
-      };
-
-    case "SET_PREFERENCES":
-      return { ...state, preferences: action.payload };
-
-    case "UPDATE_PREFERENCES":
-      return {
-        ...state,
-        preferences: state.preferences
-          ? { ...state.preferences, ...action.payload }
-          : null,
       };
 
     case "RESET_QUEST_BOARD":
@@ -99,8 +84,6 @@ interface QuestContextType {
     status: string,
     feedback?: any
   ) => Promise<void>;
-  updatePreferences: (preferences: Partial<QuestPreferences>) => Promise<void>;
-  loadPreferences: () => Promise<void>;
 }
 
 // Create context
@@ -112,12 +95,6 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [state, dispatch] = useReducer(questReducer, initialState);
   const [isLoadingBoard, setIsLoadingBoard] = useState(false);
-
-  // Load preferences on mount
-  // only if we are authenticated
-  useEffect(() => {
-    loadPreferences();
-  }, []);
 
   // Load quest board
   const loadQuestBoard = async () => {
@@ -215,40 +192,11 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Update preferences
-  const updatePreferences = async (preferences: Partial<QuestPreferences>) => {
-    try {
-      await preferencesService.updateUserProfile(preferences);
-      dispatch({ type: "UPDATE_PREFERENCES", payload: preferences });
-    } catch (error) {
-      console.error("Error updating preferences:", error);
-    }
-  };
-
-  // Load preferences
-  const loadPreferences = async () => {
-    try {
-      const profile = await preferencesService.getUserProfile();
-      const preferences: QuestPreferences = {
-        categories: profile.categories,
-        difficulty: profile.difficulty,
-        maxTime: profile.maxTime,
-        includeCompleted: profile.includeCompleted,
-        includeSkipped: profile.includeSkipped,
-      };
-      dispatch({ type: "SET_PREFERENCES", payload: preferences });
-    } catch (error) {
-      console.error("Error loading preferences:", error);
-    }
-  };
-
   const value: QuestContextType = {
     state,
     loadQuestBoard,
     refreshQuestBoard,
     updateQuestStatus,
-    updatePreferences,
-    loadPreferences,
   };
 
   return (

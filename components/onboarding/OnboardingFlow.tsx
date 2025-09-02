@@ -17,8 +17,6 @@ export const OnboardingFlow: React.FC = () => {
       case 1:
         return <OnboardingPreferences />;
       case 2:
-        return <OnboardingNotifications />;
-      case 3:
         return <OnboardingCompletion />;
       default:
         return <OnboardingWelcome />;

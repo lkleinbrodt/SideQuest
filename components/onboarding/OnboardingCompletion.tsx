@@ -1,19 +1,19 @@
+import { OnboardingProfile, QuestCategory } from "@/types/types";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
-import { QuestCategory } from "@/types/quest";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { preferencesService } from "@/api/services/preferencesService";
 import { storeOnboardingCompleted } from "@/auth/storage";
 import { useAuth } from "@/auth/AuthContext";
 import { useOnboarding } from "@/context/OnboardingContext";
 import { useRouter } from "expo-router";
+import { v4 as uuidv4 } from "uuid";
 
 export const OnboardingCompletion: React.FC = () => {
   const { state, resetOnboarding } = useOnboarding();
-  const { createUserWithPreferences } = useAuth();
+  const { signInAnonymously } = useAuth();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -21,26 +21,22 @@ export const OnboardingCompletion: React.FC = () => {
     try {
       setIsSaving(true);
 
-      // Prepare quest preferences
-      const questPreferences = {
-        categories: state.data.preferredCategories || [
-          "fitness",
-          "social",
-          "mindfulness",
-        ],
-        difficulty: state.data.preferredDifficulty || "easy",
-        maxTime: state.data.maxTimePerQuest || 15,
-        includeCompleted: true,
-        includeSkipped: false,
+      // Convert partial profile to full OnboardingProfile with defaults
+      const profile: OnboardingProfile = {
+        categories: state.profile.categories || [],
+        difficulty: state.profile.difficulty || "easy",
+        maxTime: state.profile.maxTime || 15,
+        includeCompleted: state.profile.includeCompleted ?? true,
+        includeSkipped: state.profile.includeSkipped ?? true,
+        notificationsEnabled: state.profile.notificationsEnabled ?? true,
+        notificationTime: state.profile.notificationTime || "07:00",
+        timezone: state.profile.timezone || "UTC",
+        onboardingCompleted: true, // This will be set to true after onboarding
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      // Create user with all preferences at once
-      await createUserWithPreferences(
-        questPreferences,
-        !!state.data.notificationTime,
-        state.data.notificationTime || "07:00",
-        "UTC" // Default timezone, could be made configurable later
-      );
+      await signInAnonymously(profile);
 
       // Store onboarding completion status in local storage
       await storeOnboardingCompleted(true);
@@ -59,7 +55,7 @@ export const OnboardingCompletion: React.FC = () => {
   };
 
   const getSelectedCategoriesText = () => {
-    const categories = state.data.preferredCategories || [];
+    const categories = state.profile.categories || [];
     if (categories.length === 0) return "None selected";
 
     const categoryLabels = {
@@ -106,9 +102,9 @@ export const OnboardingCompletion: React.FC = () => {
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Difficulty Level</Text>
             <Text style={styles.summaryValue}>
-              {state.data.preferredDifficulty
-                ? state.data.preferredDifficulty.charAt(0).toUpperCase() +
-                  state.data.preferredDifficulty.slice(1)
+              {state.profile.difficulty
+                ? state.profile.difficulty.charAt(0).toUpperCase() +
+                  state.profile.difficulty.slice(1)
                 : "Easy"}
             </Text>
           </View>
@@ -116,15 +112,15 @@ export const OnboardingCompletion: React.FC = () => {
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Time Commitment</Text>
             <Text style={styles.summaryValue}>
-              {state.data.maxTimePerQuest || 15} minutes per quest
+              {state.profile.maxTime || 15} minutes per quest
             </Text>
           </View>
 
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Daily Notifications</Text>
             <Text style={styles.summaryValue}>
-              {state.data.notificationTime
-                ? `Enabled at ${state.data.notificationTime}`
+              {state.profile.notificationTime
+                ? `Enabled at ${state.profile.notificationTime}`
                 : "Disabled"}
             </Text>
           </View>

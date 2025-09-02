@@ -1,29 +1,14 @@
 import { ENDPOINTS } from "@/api/config";
+import { OnboardingProfile } from "@/types/types";
 import client from "@/api/client";
-
-export interface AppleSignInCredential {
-  identityToken: string;
-  authorizationCode?: string;
-  fullName?: {
-    givenName?: string;
-    familyName?: string;
-  };
-  email?: string;
-  user?: string;
-}
 
 export interface AuthResponse {
   accessToken: string;
-  user: {
-    id: string;
-    name?: string;
-    email?: string;
-    image?: string;
-    role?: string;
-  };
+  user: AuthUser;
 }
 
-export interface UserProfile {
+// Auth user info - minimal data from JWT token
+export interface AuthUser {
   id: string;
   name?: string;
   email?: string;
@@ -33,14 +18,15 @@ export interface UserProfile {
 
 class AuthService {
   /**
-   * Authenticate user with Apple Sign-In
+   * Sign in anonymously using device UUID
    */
-  async signInWithApple(
-    credential: AppleSignInCredential
+  async signInAnonymously(
+    deviceUuid: string,
+    profile: OnboardingProfile | null
   ): Promise<AuthResponse> {
-    // The client now throws on error, so no try/catch is needed here.
-    return client.post<AuthResponse>(ENDPOINTS.APPLE_SIGNIN, {
-      appleIdToken: credential,
+    return client.post<AuthResponse>(ENDPOINTS.ANONYMOUS_SIGNIN, {
+      device_uuid: deviceUuid,
+      profile: profile ?? null,
     });
   }
 

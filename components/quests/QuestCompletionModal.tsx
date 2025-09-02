@@ -13,7 +13,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/common/Button";
 import { Colors } from "@/constants/Colors";
 import { Ionicons } from "@expo/vector-icons";
-import { QuestFeedback } from "@/types/quest";
+import { QuestFeedback } from "@/types/types";
 
 interface QuestCompletionModalProps {
   visible: boolean;

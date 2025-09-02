@@ -49,31 +49,6 @@ export interface QuestFeedback {
   timeSpent?: number; // in minutes
 }
 
-export interface QuestPreferences {
-  categories: QuestCategory[];
-  difficulty: QuestDifficulty;
-  maxTime: number; // in minutes
-  includeCompleted: boolean;
-  includeSkipped: boolean;
-}
-
-// Backend request format
-export interface QuestGenerationRequest {
-  preferences: {
-    categories: QuestCategory[];
-    difficulty: QuestDifficulty;
-    max_time: number; // Backend uses snake_case
-    include_completed: boolean;
-    include_skipped: boolean;
-  };
-  context?: {
-    weather?: string;
-    location?: string;
-    timeOfDay?: string;
-    mood?: string;
-  };
-}
-
 // Backend response format
 export interface QuestGenerationResponse {
   success: boolean;
@@ -95,13 +70,13 @@ export interface QuestCompletionRequest {
   feedback: QuestFeedback;
 }
 
-// Backend user preferences format
+// Unified user profile - used for both auth and profile management
 export interface UserProfile {
-  id: number;
-  userId: number;
+  id: string; // From auth response (string)
   categories: QuestCategory[];
   difficulty: QuestDifficulty;
   maxTime: number;
+  additionalNotes?: string;
   includeCompleted: boolean;
   includeSkipped: boolean;
   notificationsEnabled: boolean;
@@ -112,3 +87,6 @@ export interface UserProfile {
   createdAt: string;
   updatedAt: string;
 }
+
+// For onboarding - same as UserProfile but without id (which gets set after auth)
+export type OnboardingProfile = Omit<UserProfile, "id">;

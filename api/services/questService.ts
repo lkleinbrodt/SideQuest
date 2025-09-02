@@ -1,4 +1,4 @@
-import { Quest, QuestBoard, QuestStatus } from "@/types/quest";
+import { Quest, QuestBoard, QuestStatus } from "@/types/types";
 
 import { ENDPOINTS } from "../config";
 import client from "../client";

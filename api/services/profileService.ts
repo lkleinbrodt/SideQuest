@@ -1,30 +1,8 @@
-import {
-  QuestCategory,
-  QuestDifficulty,
-  QuestPreferences,
-  UserProfile,
-} from "@/types/quest";
-
 import { ENDPOINTS } from "../config";
+import { UserProfile } from "@/types/types";
 import client from "../client";
 
-// Frontend preferences interface - simplified
-export interface UserPreferences extends QuestPreferences {
-  notifications: {
-    enabled: boolean;
-    time: string;
-    sound: boolean;
-    vibration: boolean;
-  };
-  theme: "light" | "dark" | "system";
-  language: string;
-  accessibility: {
-    largeText: boolean;
-    highContrast: boolean;
-  };
-}
-
-class PreferencesService {
+class ProfileService {
   /**
    * Get user profile from backend
    */
@@ -40,6 +18,13 @@ class PreferencesService {
   }
 
   /**
+   * Reset user profile
+   */
+  async resetUserProfile(): Promise<UserProfile> {
+    return client.post<UserProfile>(ENDPOINTS.PROFILE_RESET, {});
+  }
+
+  /**
    * Mark onboarding as complete
    */
   async completeOnboarding(): Promise<{
@@ -51,4 +36,4 @@ class PreferencesService {
   }
 }
 
-export const preferencesService = new PreferencesService();
+export const profileService = new ProfileService();

@@ -1,12 +1,11 @@
 import React, { ReactNode, createContext, useContext, useReducer } from "react";
 
-import { OnboardingData } from "@/api/services/preferencesService";
+import { OnboardingProfile } from "@/types/types";
 
-// Onboarding state interface
 interface OnboardingState {
   currentStep: number;
   totalSteps: number;
-  data: Partial<OnboardingData>;
+  profile: Partial<OnboardingProfile>;
   isLoading: boolean;
   error: string | null;
 }
@@ -14,7 +13,7 @@ interface OnboardingState {
 // Onboarding action types
 type OnboardingAction =
   | { type: "SET_CURRENT_STEP"; payload: number }
-  | { type: "UPDATE_DATA"; payload: Partial<OnboardingData> }
+  | { type: "UPDATE_DATA"; payload: Partial<OnboardingProfile> }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
   | { type: "RESET_ONBOARDING" }
@@ -24,8 +23,19 @@ type OnboardingAction =
 // Initial state
 const initialState: OnboardingState = {
   currentStep: 0,
-  totalSteps: 4, // Welcome, Preferences, Notifications, Completion
-  data: {},
+  totalSteps: 2, // Welcome, Preferences (with completion)
+  profile: {
+    categories: [
+      "fitness",
+      "social",
+      "mindfulness",
+      "hobbies",
+      "outdoors",
+      "learning",
+      "creativity",
+      "chores",
+    ],
+  },
   isLoading: false,
   error: null,
 };
@@ -48,7 +58,7 @@ function onboardingReducer(
     case "UPDATE_DATA":
       return {
         ...state,
-        data: { ...state.data, ...action.payload },
+        profile: { ...state.profile, ...action.payload },
       };
 
     case "SET_LOADING":
@@ -84,7 +94,7 @@ interface OnboardingContextType {
   goToStep: (step: number) => void;
   nextStep: () => void;
   previousStep: () => void;
-  updateOnboardingData: (data: Partial<OnboardingData>) => void;
+  updateOnboardingData: (data: Partial<OnboardingProfile>) => void;
   resetOnboarding: () => void;
   isFirstStep: boolean;
   isLastStep: boolean;
@@ -112,7 +122,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({
     dispatch({ type: "PREVIOUS_STEP" });
   };
 
-  const updateOnboardingData = (data: Partial<OnboardingData>) => {
+  const updateOnboardingData = (data: Partial<OnboardingProfile>) => {
     dispatch({ type: "UPDATE_DATA", payload: data });
   };
 

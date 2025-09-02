@@ -25,10 +25,10 @@ export const OnboardingNotifications: React.FC = () => {
     useOnboarding();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(
-    state.data.notificationTime ? true : false
+    state.profile.notificationTime ? true : false
   );
   const [notificationTime, setNotificationTime] = useState(
-    state.data.notificationTime || "07:00"
+    state.profile.notificationTime || "07:00"
   );
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);

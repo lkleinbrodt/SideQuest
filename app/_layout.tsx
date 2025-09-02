@@ -66,14 +66,6 @@ function RootLayoutNav() {
                   headerBackTitle: "Back",
                 }}
               />
-              <Stack.Screen
-                name="settings"
-                options={{
-                  headerBackTitle: "Back",
-                  headerTitle: "",
-                  headerTransparent: true,
-                }}
-              />
             </Stack>
           </OnboardingProvider>
         </QuestProvider>

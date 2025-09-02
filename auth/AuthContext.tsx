@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { UserProfile, authService } from "@/api/services/authService";
 import {
   getUser,
   removeOnboardingCompleted,
@@ -9,23 +8,15 @@ import {
   storeUser,
 } from "./storage";
 
-import { QuestPreferences } from "@/types/quest";
-import { anonymousAuthService } from "@/api/services/anonymousAuthService";
+import { OnboardingProfile } from "@/types/types";
+import { authService } from "@/api/services/authService";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
 
 interface AuthContextType {
-  user: UserProfile | null;
+  user: { id: string } | null; // Minimal user info from auth
   loading: boolean;
   error: string | null;
-  signIn: (token: string, userData: UserProfile) => Promise<void>;
-  signInWithApple: (credential: any) => Promise<void>;
-  signInAnonymously: () => Promise<void>;
-  createUserWithPreferences: (
-    preferences: QuestPreferences,
-    notificationsEnabled: boolean,
-    notificationTime: string,
-    timezone: string
-  ) => Promise<void>;
+  signInAnonymously: (profile?: OnboardingProfile | null) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -35,7 +26,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,96 +50,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     loadUser();
   }, []);
 
-  // Sign in function
-  const signIn = async (token: string, userData: UserProfile) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Store token and user data
-      await storeToken(token);
-      await storeUser(JSON.stringify(userData));
-
-      setUser(userData);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to sign in";
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Apple Sign-In function
-  const signInWithApple = async (credential: any) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Call backend API for Apple Sign-In
-      const response = await authService.signInWithApple(credential);
-
-      // The auth service returns the data directly (not wrapped in success/data)
-      // The API client transforms snake_case to camelCase, so we need to use camelCase field names
-      if (!response || !response.accessToken || !response.user) {
-        throw new Error("Invalid response: missing access token or user data");
-      }
-
-      const { accessToken: access_token, user } = response;
-
-      // Store token and user data
-      await storeToken(access_token);
-      await storeUser(JSON.stringify(user));
-
-      setUser(user);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Apple Sign-In failed";
-      setError(errorMessage);
-      throw err; // Re-throw to let the calling component handle it
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Anonymous Sign-In function
-  const signInAnonymously = async () => {
+  const signInAnonymously = async (
+    profile: OnboardingProfile | null = null
+  ) => {
     try {
-      console.log("AuthContext: Starting anonymous sign-in...");
       setLoading(true);
       setError(null);
 
-      // Get or create device UUID
-      console.log("AuthContext: Getting device ID...");
       const deviceId = await getOrCreateDeviceId();
-      console.log("AuthContext: Device ID:", deviceId);
+      const response = await authService.signInAnonymously(deviceId, profile);
 
-      // Call backend API for anonymous sign-in
-      console.log("AuthContext: Calling anonymous auth service...");
-      const response = await anonymousAuthService.signInAnonymously(deviceId);
-      console.log("AuthContext: Response:", response);
-
-      // The anonymous auth service returns the data directly (not wrapped in success/data)
-      // The API client transforms snake_case to camelCase, so we need to use camelCase field names
       if (!response || !response.accessToken || !response.user) {
         throw new Error("Invalid response: missing access token or user data");
       }
 
       const { accessToken: access_token, user } = response;
-      console.log("AuthContext: Extracted token and user:", {
-        access_token,
-        user,
-      });
 
-      console.log("AuthContext: Storing token and user data...");
-
-      // Store token and user data
       await storeToken(access_token);
       await storeUser(JSON.stringify(user));
 
-      console.log("AuthContext: Setting user state:", user);
       setUser(user);
-      console.log("AuthContext: Anonymous sign-in completed successfully");
     } catch (err) {
       console.error("AuthContext: Anonymous sign-in error:", err);
       const errorMessage =
@@ -156,63 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(errorMessage);
       throw err; // Re-throw to let the calling component handle it
     } finally {
-      console.log("AuthContext: Setting loading to false");
       setLoading(false);
     }
   };
 
   // Create user with preferences (for new users completing onboarding)
-  const createUserWithPreferences = async (
-    preferences: QuestPreferences,
-    notificationsEnabled: boolean,
-    notificationTime: string,
-    timezone: string
-  ) => {
-    try {
-      console.log("AuthContext: Creating user with preferences...");
-      setLoading(true);
-      setError(null);
-
-      // Get device UUID
-      const deviceId = await getOrCreateDeviceId();
-      console.log("AuthContext: Device ID:", deviceId);
-
-      // Create user with preferences
-      const response = await anonymousAuthService.createUserWithPreferences(
-        deviceId,
-        preferences,
-        notificationsEnabled,
-        notificationTime,
-        timezone
-      );
-      console.log("AuthContext: User created with preferences:", response);
-
-      if (!response || !response.accessToken || !response.user) {
-        throw new Error("Invalid response: missing access token or user data");
-      }
-
-      const { accessToken: access_token, user } = response;
-
-      // Store token and user data
-      await storeToken(access_token);
-      await storeUser(JSON.stringify(user));
-
-      setUser(user);
-      console.log(
-        "AuthContext: User creation with preferences completed successfully"
-      );
-    } catch (err) {
-      console.error("AuthContext: User creation with preferences error:", err);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to create user with preferences";
-      setError(errorMessage);
-      throw err; // Re-throw to let the calling component handle it
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Sign out function
   const signOut = async () => {
@@ -239,10 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user,
         loading,
         error,
-        signIn,
-        signInWithApple,
         signInAnonymously,
-        createUserWithPreferences,
         signOut,
         clearError,
       }}

@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 const DEVICE_ID_KEY = "sidequest_device_id";
 
 // Hardcoded device ID for development mode (simulator)
-const DEV_DEVICE_ID = "dev-simulator-device-id-12345";
+const DEV_DEVICE_ID = "5a5ed607-3d2e-4697-8d02-235b8b0041b7";
 
 /**
  * Check if the app is running in development mode

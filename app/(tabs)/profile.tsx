@@ -1,55 +1,65 @@
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import React, { useEffect, useState } from "react";
 
-import { Button } from "@/components/common/Button";
-import { Card } from "@/components/common/Card";
 import { Colors } from "@/constants/Colors";
-import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
-import React from "react";
-import client from "@/api/client";
-import { preferencesService } from "@/api/services/preferencesService";
-import { useAuth } from "@/auth/AuthContext";
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { UserProfile } from "@/types/types";
+import { profileService } from "@/api/services/profileService";
+import { removeOnboardingCompleted } from "@/auth/storage";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const [dailyReminder, setDailyReminder] = React.useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleResetPreferences = () => {
-    Alert.alert(
-      "Reset Preferences",
-      "This will reset all your quest preferences and start fresh. Are you sure?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => {
-            // In real app, this would call API to reset preferences
-            Alert.alert(
-              "Preferences Reset",
-              "Your preferences have been reset."
-            );
-          },
-        },
-      ]
-    );
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const userProfile = await profileService.getUserProfile();
+      setProfile(userProfile);
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleProfileUpdate = (updatedProfile: UserProfile) => {
+    setProfile(updatedProfile);
+  };
+
+  const handleResetPreferences = async () => {
+    try {
+      await profileService.resetUserProfile();
+      await removeOnboardingCompleted();
+      router.replace("/onboarding");
+    } catch (error) {
+      console.error("Error resetting profile:", error);
+    }
+  };
+
+  if (loading || !profile) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -68,54 +78,31 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>Profile</Text>
         </View>
 
-        <View style={styles.settingsContainer}>
-          {/* Notifications Section */}
-          {/* <Card variant="default" style={styles.settingsCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="notifications" size={24} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Notifications</Text>
-            </View>
+        <View style={styles.preferencesContainer}>
+          <ProfileEditor
+            profile={profile}
+            onProfileUpdate={handleProfileUpdate}
+            showHeader={false}
+            compact={true}
+            autoSave={true}
+          />
+        </View>
 
-            <View style={styles.settingItem}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Morning Reminder</Text>
-                <Text style={styles.settingDescription}>
-                  Remind me to check quests at 7:00 AM
-                </Text>
-              </View>
-              <Switch
-                value={dailyReminder}
-                onValueChange={setDailyReminder}
-                trackColor={{ false: Colors.lightGray, true: Colors.primary }}
-                thumbColor={Colors.white}
-              />
-            </View>
-          </Card> */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
 
-          {/* Preferences Section */}
-          <Card variant="default" style={styles.settingsCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="settings" size={24} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Preferences</Text>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleResetPreferences}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Reset Preferences</Text>
+              <Text style={styles.settingDescription}>
+                Reset your quest preferences to default
+              </Text>
             </View>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => router.push("/settings")}
-            >
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Advanced Settings</Text>
-                <Text style={styles.settingDescription}>
-                  Manage all your quest preferences and app settings
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={Colors.mutedText}
-              />
-            </TouchableOpacity>
-          </Card>
+            <Text style={styles.signOutText}>→</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -163,40 +150,36 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     textAlign: "center",
   },
-  settingsContainer: {
-    padding: Layout.spacing.m,
+  preferencesContainer: {
+    flex: 1,
   },
-  settingsCard: {
-    marginBottom: Layout.spacing.m,
-    padding: Layout.spacing.l,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Layout.spacing.m,
+  section: {
+    paddingHorizontal: Layout.spacing.m,
+    paddingVertical: Layout.spacing.l,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: Colors.primary,
-    marginLeft: Layout.spacing.s,
+    marginBottom: Layout.spacing.m,
   },
-  settingItem: {
+  settingRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: Layout.spacing.m,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderColor: Colors.border,
   },
   settingInfo: {
     flex: 1,
     marginRight: Layout.spacing.m,
   },
-  settingLabel: {
+  settingTitle: {
     fontSize: 16,
-    fontWeight: "500",
-    color: Colors.darkText,
+    fontWeight: "600",
+    color: Colors.primary,
     marginBottom: Layout.spacing.xs,
   },
   settingDescription: {
@@ -204,22 +187,18 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     lineHeight: 20,
   },
-  actionsContainer: {
-    marginTop: Layout.spacing.l,
-    gap: Layout.spacing.m,
+  signOutText: {
+    fontSize: 18,
+    color: Colors.error || "#FF3B30",
+    fontWeight: "600",
   },
-  actionButton: {
-    marginBottom: Layout.spacing.s,
-  },
-  footer: {
-    marginTop: Layout.spacing.xl,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: Layout.spacing.l,
   },
-  footerText: {
-    fontSize: 14,
+  loadingText: {
+    fontSize: 16,
     color: Colors.mutedText,
-    textAlign: "center",
-    marginBottom: Layout.spacing.xs,
   },
 });

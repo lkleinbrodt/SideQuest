@@ -15,7 +15,7 @@ import Error from "@/components/common/Error";
 import { Ionicons } from "@expo/vector-icons";
 import { Layout } from "@/constants/Layout";
 import { QuestCard } from "@/components/quests/QuestCard";
-import { QuestFeedback } from "@/types/quest";
+import { QuestFeedback } from "@/types/types";
 import { RefreshSpinner } from "@/components/common/RefreshSpinner";
 import { useQuest } from "@/context/QuestContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

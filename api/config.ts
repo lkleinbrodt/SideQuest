@@ -29,6 +29,7 @@ export const ENDPOINTS = {
   // User preferences
   PROFILE: "/sidequest/me",
   ONBOARDING_COMPLETE: "/sidequest/onboarding/complete",
+  PROFILE_RESET: "/sidequest/me/reset",
 
   // Health check
   HEALTH: "/sidequest/health",
@@ -36,7 +37,5 @@ export const ENDPOINTS = {
   // Authentication
   APPLE_SIGNIN: "/sidequest/auth/apple/signin",
   ANONYMOUS_SIGNIN: "/sidequest/auth/anonymous/signin",
-  CREATE_USER_WITH_PREFERENCES:
-    "/sidequest/auth/anonymous/create-with-preferences",
   REFRESH_TOKEN: "/auth/refresh",
 } as const;

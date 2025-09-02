@@ -1,4 +1,4 @@
-import { Quest, QuestCategory, QuestDifficulty } from "@/types/quest";
+import { Quest, QuestCategory, QuestDifficulty } from "@/types/types";
 
 // Fallback quests for when the API is unavailable
 export const fallbackQuests: Omit<Quest, "id" | "createdAt" | "expiresAt">[] = [
