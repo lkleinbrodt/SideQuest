@@ -13,16 +13,15 @@ import { v4 as uuidv4 } from "uuid";
 
 export const OnboardingCompletion: React.FC = () => {
   const { state, resetOnboarding } = useOnboarding();
-  const { signInAnonymously } = useAuth();
+  const { signInWithProfile } = useAuth(); // Use the new function from AuthContext
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
 
   const handleCompleteOnboarding = async () => {
     try {
       setIsSaving(true);
-
-      // Convert partial profile to full OnboardingProfile with defaults
       const profile: OnboardingProfile = {
+        // ... (your existing logic to build the profile object is fine)
         categories: state.profile.categories || [],
         difficulty: state.profile.difficulty || "easy",
         maxTime: state.profile.maxTime || 15,
@@ -31,24 +30,23 @@ export const OnboardingCompletion: React.FC = () => {
         notificationsEnabled: state.profile.notificationsEnabled ?? true,
         notificationTime: state.profile.notificationTime || "07:00",
         timezone: state.profile.timezone || "UTC",
-        onboardingCompleted: true, // This will be set to true after onboarding
+        onboardingCompleted: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      await signInAnonymously(profile);
+      // Call the new dedicated function to sign in and save the profile
+      await signInWithProfile(profile);
 
-      // Store onboarding completion status in local storage
-      await storeOnboardingCompleted(true);
-
-      // Reset onboarding context
+      // Reset onboarding context state for future sessions
       resetOnboarding();
 
-      // Navigate to main app
+      // Explicitly navigate to the main app for a smooth user experience.
+      // The router guard in (tabs)/_layout will also protect this route.
       router.replace("/(tabs)");
+
     } catch (error) {
       console.error("Error completing onboarding:", error);
-      // In a real app, you'd show an error message
     } finally {
       setIsSaving(false);
     }

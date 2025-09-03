@@ -19,7 +19,7 @@ export const OnboardingPreferences: React.FC = () => {
   const { nextStep, previousStep, updateOnboardingData, state } =
     useOnboarding();
   const { resetOnboarding } = useOnboarding();
-  const { signInAnonymously } = useAuth();
+  const { signInWithProfile } = useAuth();
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -64,7 +64,7 @@ export const OnboardingPreferences: React.FC = () => {
         updatedAt: new Date().toISOString(),
       };
 
-      await signInAnonymously(profile);
+      await signInWithProfile(profile);
 
       // Store onboarding completion status in local storage
       await storeOnboardingCompleted(true);

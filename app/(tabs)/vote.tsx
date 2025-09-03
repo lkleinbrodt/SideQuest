@@ -48,21 +48,28 @@ export default function VoteScreen() {
       await votingService.submitVote(questTemplate.id, vote);
       console.log("Vote submitted successfully");
 
-      // Move to next quest
-      setCurrentIndex((prev) => {
-        const newIndex = prev + 1;
-        console.log("Moving to next quest:", {
-          prev,
-          newIndex,
-          totalQuests: questTemplates.length,
+      // Remove the voted quest from the current list
+      setQuestTemplates((prev) => {
+        const newTemplates = prev.filter(
+          (template) => template.id !== questTemplate.id
+        );
+        console.log("Removed voted quest from list:", {
+          questId: questTemplate.id,
+          remainingQuests: newTemplates.length,
         });
-        return newIndex;
+        return newTemplates;
       });
 
-      // Load more quests if we're running low
-      if (currentIndex >= questTemplates.length - 3) {
+      // If we're at the end of the list or have no more quests, load more
+      if (
+        currentIndex >= questTemplates.length - 4 ||
+        questTemplates.length <= 1
+      ) {
         console.log("Loading more quests...");
         loadMoreQuests();
+      } else {
+        // Stay at the same index since we removed the current quest
+        console.log("Staying at current index:", currentIndex);
       }
     } catch (err) {
       console.error("Error submitting vote:", err);
@@ -75,7 +82,14 @@ export default function VoteScreen() {
   const loadMoreQuests = async () => {
     try {
       const newTemplates = await votingService.getQuestsToVoteOn(5);
-      setQuestTemplates((prev) => [...prev, ...newTemplates]);
+      setQuestTemplates((prev) => {
+        const combined = [...prev, ...newTemplates];
+        // Reset index to 0 if we had no quests before
+        if (prev.length === 0) {
+          setCurrentIndex(0);
+        }
+        return combined;
+      });
     } catch (err) {
       console.error("Error loading more quest templates:", err);
     }
@@ -108,14 +122,6 @@ export default function VoteScreen() {
       submitVote(currentQuest, "thumbs_down");
     }
   };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <AnimatedLoading />
-      </SafeAreaView>
-    );
-  }
 
   if (error) {
     return (
@@ -157,7 +163,10 @@ export default function VoteScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Vote on Quests</Text>
         <Text style={styles.subtitle}>
-          Help us improve quest quality by voting on these suggestions
+          Voting helps improve your quest quality
+        </Text>
+        <Text style={styles.subsubtitle}>
+          Adding personal notes helps even more!
         </Text>
       </View>
 
@@ -228,12 +237,6 @@ export default function VoteScreen() {
           </View>
         </View>
       </View>
-
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>
-          {currentIndex + 1} of {questTemplates.length}
-        </Text>
-      </View>
     </SafeAreaView>
   );
 }
@@ -252,6 +255,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: Colors.darkText,
     marginBottom: 8,
+  },
+  subsubtitle: {
+    fontSize: 10,
+    color: Colors.secondary,
+    textAlign: "center",
+    lineHeight: 20,
   },
   subtitle: {
     fontSize: 16,

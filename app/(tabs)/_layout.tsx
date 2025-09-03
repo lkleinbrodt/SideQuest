@@ -6,15 +6,18 @@ import React from "react";
 import { useAuth } from "@/auth/AuthContext";
 
 export default function TabLayout() {
-  const { user, loading } = useAuth();
+  const { user, onboardingComplete, loading } = useAuth();
 
-  // Redirect to onboarding if not authenticated
   if (loading) {
+    // While checking auth state, render nothing to avoid screen flicker
     return null;
   }
 
-  if (!user) {
-    return <Redirect href="/onboarding" />;
+  // If there is no user OR if onboarding is not complete, redirect.
+  if (!user || !onboardingComplete) {
+    // Redirect to the root loading gate, which will correctly route
+    // the user to the onboarding flow.
+    return <Redirect href="/" />;
   }
 
   return (

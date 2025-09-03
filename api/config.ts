@@ -1,6 +1,6 @@
 const API_CONFIG = {
   development: {
-    baseURL: "http://localhost:5002/api",
+    baseURL: "http://10.0.0.111:5002/api",
     timeout: 30000,
   },
   production: {
@@ -35,7 +35,6 @@ export const ENDPOINTS = {
   HEALTH: "/sidequest/health",
 
   // Authentication
-  APPLE_SIGNIN: "/sidequest/auth/apple/signin",
   ANONYMOUS_SIGNIN: "/sidequest/auth/anonymous/signin",
   REFRESH_TOKEN: "/auth/refresh",
 

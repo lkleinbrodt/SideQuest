@@ -17,7 +17,7 @@ import { Layout } from "@/constants/Layout";
 import { QuestCategory } from "@/types/types";
 import { QuestCompletionModal } from "./QuestCompletionModal";
 
-const BADGE_SIZE = 40;
+const BADGE_SIZE = 70;
 
 const categoryImages = {
   fitness: require("@/assets/category-badges/fitness_1_transparent.png"),
@@ -313,17 +313,18 @@ export const QuestCard: React.FC<QuestCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     marginBottom: Layout.spacing.m,
-    padding: Layout.spacing.l,
+    padding: Layout.spacing.m,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: Layout.spacing.m,
+    padding: 0,
+    margin: 0,
   },
   categoryContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-start",
     flex: 1,
   },
   categoryImage: {

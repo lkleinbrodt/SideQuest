@@ -19,9 +19,8 @@ export {
 } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  // Note: Changed from (tabs) to (auth) since we now auto-login on app boot
-  initialRouteName: "(auth)",
+  // Change the initial route to our new loading gate
+  initialRouteName: "index",
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -59,13 +58,14 @@ function RootLayoutNav() {
           <QuestProvider>
             <OnboardingProvider>
               <Stack>
+                {/* Add the new index screen to the stack */}
+                <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen
                   name="(tabs)"
                   options={{
                     headerShown: false,
                     animation: "fade",
-                    headerBackTitle: "Back",
                   }}
                 />
               </Stack>

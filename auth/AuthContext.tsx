@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 import {
-  getUser,
+  getOnboardingCompleted,
   removeOnboardingCompleted,
   removeToken,
   removeUser,
+  storeOnboardingCompleted,
   storeToken,
   storeUser,
 } from "./storage";
@@ -13,10 +14,12 @@ import { authService } from "@/api/services/authService";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
 
 interface AuthContextType {
-  user: { id: string } | null; // Minimal user info from auth
+  user: { id: string } | null;
+  onboardingComplete: boolean;
   loading: boolean;
   error: string | null;
-  signInAnonymously: (profile?: OnboardingProfile | null) => Promise<void>;
+  initializeApp: () => Promise<void>;
+  signInWithProfile: (profile: OnboardingProfile) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
@@ -27,33 +30,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<{ id: string } | null>(null);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user data from storage on app start
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userData = await getUser();
-        if (userData) {
-          setUser(JSON.parse(userData));
-        }
-        // Note: We don't automatically trigger anonymous login here
-        // The auto-login component will handle that logic
-      } catch (error) {
-        console.error("Failed to restore user:", error);
-      } finally {
-        setLoading(false);
+  const initializeApp = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      // 1. Get the unique device ID.
+      const deviceId = await getOrCreateDeviceId();
+
+      // 2. Sign in with the backend. The profile is null because the backend will handle
+      // creating a new user or logging in an existing one based on the deviceId.
+      const response = await authService.signInAnonymously(deviceId, null);
+      if (!response || !response.accessToken || !response.user) {
+        throw new Error("Invalid response from backend during initial sign-in");
       }
-    };
 
-    loadUser();
-  }, []);
+      const { accessToken, user: authUser } = response;
+      await storeToken(accessToken);
+      await storeUser(JSON.stringify(authUser));
+      setUser(authUser);
 
-  // Anonymous Sign-In function
-  const signInAnonymously = async (
-    profile: OnboardingProfile | null = null
-  ) => {
+      // 3. Check local storage to see if onboarding has been completed.
+      const isCompleted = await getOnboardingCompleted();
+      setOnboardingComplete(isCompleted);
+    } catch (err) {
+      console.error("AuthContext: Initialization error:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Initialization failed";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithProfile = async (profile: OnboardingProfile) => {
     try {
       setLoading(true);
       setError(null);
@@ -65,26 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Invalid response: missing access token or user data");
       }
 
-      const { accessToken: access_token, user } = response;
+      const { accessToken, user: authUser } = response;
+      await storeToken(accessToken);
+      await storeUser(JSON.stringify(authUser));
+      setUser(authUser);
 
-      await storeToken(access_token);
-      await storeUser(JSON.stringify(user));
-
-      setUser(user);
+      // After successfully saving the profile, mark onboarding as complete.
+      await storeOnboardingCompleted(true);
+      setOnboardingComplete(true);
     } catch (err) {
-      console.error("AuthContext: Anonymous sign-in error:", err);
+      console.error("AuthContext: Sign-in with profile error:", err);
       const errorMessage =
-        err instanceof Error ? err.message : "Anonymous sign-in failed";
+        err instanceof Error ? err.message : "Failed to save preferences";
       setError(errorMessage);
-      throw err; // Re-throw to let the calling component handle it
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Create user with preferences (for new users completing onboarding)
-
-  // Sign out function
   const signOut = async () => {
     try {
       setLoading(true);
@@ -92,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await removeUser();
       await removeOnboardingCompleted();
       setUser(null);
+      setOnboardingComplete(false);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to sign out";
@@ -107,9 +121,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     <AuthContext.Provider
       value={{
         user,
+        onboardingComplete,
         loading,
         error,
-        signInAnonymously,
+        initializeApp,
+        signInWithProfile,
         signOut,
         clearError,
       }}
