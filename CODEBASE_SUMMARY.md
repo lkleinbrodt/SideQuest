@@ -7,12 +7,14 @@
 ### Key Technologies
 - **Frontend**: React Native with Expo SDK 53
 - **Backend**: Flask (Python) with Supabase (PostgreSQL)
+- **Build System**: EAS Build for development, preview, and production builds
 - **API Client**: Apisauce with automatic camelCase/snake_case conversion
 - **Authentication**: Anonymous device-based authentication
 - **Notifications**: Expo Notifications for daily reminders
 - **Storage**: Expo SecureStore for sensitive data, AsyncStorage for app state
-- **Navigation**: Expo Router with file-based routing
+- **Navigation**: Expo Router with file-based routing and web support
 - **State Management**: React Context with useReducer hooks
+- **TypeScript**: Strict mode with path aliases (@/* imports)
 
 ---
 
@@ -46,11 +48,17 @@
 - Environment-based API URL configuration
 - Centralized endpoint definitions
 
+**`+html.tsx`** - Web-specific HTML root template (Expo Router)
+- Configures root HTML structure for web builds
+- Sets viewport, charset, and responsive background styles
+- Includes ScrollView style resets for web compatibility
+- Dark mode support via CSS media queries
+
 **Services** (`/api/services/`):
 - **`authService.ts`** - Authentication API calls (anonymous sign-in)
 - **`questService.ts`** - Quest management (get board, refresh, update status, history)
 - **`profileService.ts`** - User profile management
-- **`votingService.ts`** - Quest template voting system
+- **`votingService.ts`** - Quest template voting system with QuestTemplate and QuestTemplateVote interfaces
 - **`notificationService.ts`** - Push notification management and scheduling
 
 ### State Management (`/context/`)
@@ -111,6 +119,7 @@
 - **`OnboardingNotifications.tsx`** - Notification permission setup
 - **`OnboardingCompletion.tsx`** - Final onboarding step
 - **`OnboardingFlow.tsx`** - Flow coordinator
+- **`index.ts`** - Export barrel for onboarding components
 
 **Profile Components** (`/components/profile/`):
 - **`ProfileEditor.tsx`** - Main profile editing interface
@@ -119,6 +128,7 @@
 - **`TimeSelector.tsx`** - Time preference selection
 - **`NotificationSettings.tsx`** - Notification configuration
 - **`AdditionalNotesInput.tsx`** - Free-text preferences input
+- **`index.ts`** - Export barrel for profile components with TypeScript type exports
 
 ### Utilities (`/utils/`)
 
