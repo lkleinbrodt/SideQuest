@@ -6,6 +6,7 @@ import React from "react";
 export interface AdditionalNotesInputProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   compact?: boolean;
   placeholder?: string;
 }
@@ -13,6 +14,7 @@ export interface AdditionalNotesInputProps {
 export const AdditionalNotesInput: React.FC<AdditionalNotesInputProps> = ({
   value,
   onChange,
+  onBlur,
   compact = false,
   placeholder = "Any specific preferences, interests, or notes about your quests...",
 }) => {
@@ -22,6 +24,7 @@ export const AdditionalNotesInput: React.FC<AdditionalNotesInputProps> = ({
         style={[styles.textInput, compact && styles.compactTextInput]}
         value={value}
         onChangeText={onChange}
+        onBlur={onBlur}
         placeholder={placeholder}
         placeholderTextColor={Colors.mutedText}
         multiline

@@ -1,5 +1,6 @@
 import "react-native-reanimated";
 
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 
 import { AuthProvider } from "@/auth/AuthContext";
@@ -9,6 +10,7 @@ import { OnboardingProvider } from "@/context/OnboardingContext";
 import { QuestProvider } from "@/context/QuestContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
+import { notificationService } from "@/api/services/notificationService";
 import { useColorScheme } from "@/components/useColorScheme";
 import { useEffect } from "react";
 import { useFonts } from "expo-font";
@@ -50,6 +52,29 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    // Set up notification listeners
+    const notificationListener =
+      notificationService.addNotificationReceivedListener((notification) => {
+        console.log("Notification received:", notification);
+        // Handle notification received while app is in foreground
+        // You could show an in-app notification or update UI here
+      });
+
+    const responseListener =
+      notificationService.addNotificationResponseListener((response) => {
+        console.log("Notification response:", response);
+        // Handle when user taps on notification
+        // You could navigate to a specific screen here
+        // For now, we'll just log it
+      });
+
+    return () => {
+      notificationListener.remove();
+      responseListener.remove();
+    };
+  }, []);
 
   return (
     <SafeAreaProvider>

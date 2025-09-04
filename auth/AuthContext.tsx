@@ -12,6 +12,7 @@ import {
 import { OnboardingProfile } from "@/types/types";
 import { authService } from "@/api/services/authService";
 import { getOrCreateDeviceId } from "@/utils/deviceId";
+import { notificationService } from "@/api/services/notificationService";
 
 interface AuthContextType {
   user: { id: string } | null;
@@ -39,10 +40,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(null);
       setLoading(true);
 
-      // 1. Get the unique device ID.
+      // 1. Initialize notification service
+      await notificationService.initialize();
+
+      // 2. Get the unique device ID.
       const deviceId = await getOrCreateDeviceId();
 
-      // 2. Sign in with the backend. The profile is null because the backend will handle
+      // 3. Sign in with the backend. The profile is null because the backend will handle
       // creating a new user or logging in an existing one based on the deviceId.
       const response = await authService.signInAnonymously(deviceId, null);
       if (!response || !response.accessToken || !response.user) {
@@ -54,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await storeUser(JSON.stringify(authUser));
       setUser(authUser);
 
-      // 3. Check local storage to see if onboarding has been completed.
+      // 4. Check local storage to see if onboarding has been completed.
       const isCompleted = await getOnboardingCompleted();
       setOnboardingComplete(isCompleted);
     } catch (err) {

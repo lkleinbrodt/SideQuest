@@ -7,8 +7,8 @@ import { CategorySelector } from "./CategorySelector";
 import { Colors } from "@/constants/Colors";
 import { NotificationSettings } from "./NotificationSettings";
 import { getUserTimezone } from "@/utils/timezone";
+import { notificationService } from "@/api/services/notificationService";
 import { profileService } from "@/api/services/profileService";
-import { useAutoSave } from "@/hooks/useAutoSave";
 
 export interface ProfileEditorData {
   categories: QuestCategory[];
@@ -25,7 +25,6 @@ export interface ProfileEditorProps {
   headerSubtitle?: string | null;
   compact?: boolean;
   onScrollToBottom?: () => void; // For onboarding
-  autoSave?: boolean; // Whether to auto-save changes
 }
 
 export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
@@ -38,7 +37,6 @@ export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
       headerSubtitle = null,
       compact = false,
       onScrollToBottom,
-      autoSave = true,
     },
     ref
   ) => {
@@ -60,38 +58,92 @@ export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
       });
     }, [profile]);
 
-    const saveProfile = useCallback(
-      async (data: ProfileEditorData) => {
-        const updatedProfile = await profileService.updateUserProfile({
-          categories: data.categories,
-          additionalNotes: data.additionalNotes,
-          notificationsEnabled: data.notificationsEnabled,
-          notificationTime: data.notificationTime,
-          timezone: getUserTimezone(),
-        });
+    // Sync notification settings when profile loads
+    useEffect(() => {
+      const syncNotificationSettings = async () => {
+        try {
+          await notificationService.updateNotificationSettings({
+            enabled: profile.notificationsEnabled,
+            time: profile.notificationTime,
+          });
+        } catch (error) {
+          console.error("Failed to sync notification settings:", error);
+        }
+      };
 
-        onProfileUpdate?.(updatedProfile);
-        return updatedProfile;
+      syncNotificationSettings();
+    }, [profile.notificationsEnabled, profile.notificationTime]);
+
+    const saveProfile = useCallback(
+      async (updates: Partial<ProfileEditorData>) => {
+        try {
+          const updatedProfile = await profileService.updateUserProfile({
+            categories: updates.categories ?? data.categories,
+            additionalNotes: updates.additionalNotes ?? data.additionalNotes,
+            notificationsEnabled:
+              updates.notificationsEnabled ?? data.notificationsEnabled,
+            notificationTime: updates.notificationTime ?? data.notificationTime,
+            timezone: getUserTimezone(),
+          });
+
+          onProfileUpdate?.(updatedProfile);
+          return updatedProfile;
+        } catch (error) {
+          console.error("Failed to save profile:", error);
+          // Could add error handling here if needed
+        }
       },
-      [onProfileUpdate]
+      [data, onProfileUpdate]
     );
 
-    // Use auto-save hook with 2-second debounce (only if autoSave is enabled)
-    const { hasUnsavedChanges, isSaving } = useAutoSave({
-      data,
-      onSave: autoSave
-        ? async (data) => {
-            await saveProfile(data);
-          }
-        : async () => {},
-      debounceMs: 2000,
-      saveOnBlur: true,
-      saveOnUnmount: true,
-    });
+    const handleCategoriesChange = useCallback(
+      async (categories: QuestCategory[]) => {
+        setData((prev) => ({ ...prev, categories }));
+        await saveProfile({ categories });
+      },
+      [saveProfile]
+    );
 
-    const updateData = (updates: Partial<ProfileEditorData>) => {
-      setData((prev) => ({ ...prev, ...updates }));
-    };
+    const handleAdditionalNotesChange = useCallback(
+      (additionalNotes: string) => {
+        setData((prev) => ({ ...prev, additionalNotes }));
+      },
+      []
+    );
+
+    const handleAdditionalNotesBlur = useCallback(async () => {
+      await saveProfile({ additionalNotes: data.additionalNotes });
+    }, [saveProfile, data.additionalNotes]);
+
+    const handleNotificationsChange = useCallback(
+      async (notificationsEnabled: boolean) => {
+        setData((prev) => ({ ...prev, notificationsEnabled }));
+        await saveProfile({ notificationsEnabled });
+
+        // Update local notification settings
+        await notificationService.updateNotificationSettings({
+          enabled: notificationsEnabled,
+          time: data.notificationTime,
+        });
+      },
+      [saveProfile, data.notificationTime]
+    );
+
+    const handleTimeChange = useCallback(
+      async (notificationTime: string) => {
+        setData((prev) => ({ ...prev, notificationTime }));
+        await saveProfile({ notificationTime });
+
+        // Update local notification settings if notifications are enabled
+        if (data.notificationsEnabled) {
+          await notificationService.updateNotificationSettings({
+            enabled: data.notificationsEnabled,
+            time: notificationTime,
+          });
+        }
+      },
+      [saveProfile, data.notificationsEnabled]
+    );
 
     const handleScroll = (event: any) => {
       const { layoutMeasurement, contentOffset, contentSize } =
@@ -142,9 +194,7 @@ export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
           </Text>
           <CategorySelector
             selectedCategories={data.categories}
-            onCategoriesChange={(categories: QuestCategory[]) =>
-              updateData({ categories })
-            }
+            onCategoriesChange={handleCategoriesChange}
             compact={compact}
           />
         </View>
@@ -157,7 +207,8 @@ export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
 
           <AdditionalNotesInput
             value={data.additionalNotes || ""}
-            onChange={(additionalNotes) => updateData({ additionalNotes })}
+            onChange={handleAdditionalNotesChange}
+            onBlur={handleAdditionalNotesBlur}
             compact={compact}
             placeholder="I have a dog. I work from home. I like painting. I am learning Spanish..."
           />
@@ -169,23 +220,11 @@ export const ProfileEditor = forwardRef<ScrollView, ProfileEditorProps>(
           <NotificationSettings
             notificationsEnabled={data.notificationsEnabled}
             notificationTime={data.notificationTime}
-            onNotificationsChange={(notificationsEnabled) =>
-              updateData({ notificationsEnabled })
-            }
-            onTimeChange={(notificationTime) =>
-              updateData({ notificationTime })
-            }
+            onNotificationsChange={handleNotificationsChange}
+            onTimeChange={handleTimeChange}
             compact={compact}
           />
         </View>
-
-        {autoSave && hasUnsavedChanges && (
-          <View style={styles.saveIndicator}>
-            <Text style={styles.saveIndicatorText}>
-              {isSaving ? "Saving..." : "Unsaved changes"}
-            </Text>
-          </View>
-        )}
       </ScrollView>
     );
   }
@@ -243,15 +282,5 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     marginBottom: 16,
     lineHeight: 20,
-  },
-  saveIndicator: {
-    alignItems: "center",
-    paddingVertical: 12,
-    marginTop: 16,
-  },
-  saveIndicatorText: {
-    fontSize: 12,
-    color: Colors.mutedText,
-    fontStyle: "italic",
   },
 });

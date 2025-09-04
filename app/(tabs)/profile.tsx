@@ -12,6 +12,7 @@ import { Colors } from "@/constants/Colors";
 import { Layout } from "@/constants/Layout";
 import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { UserProfile } from "@/types/types";
+import { notificationService } from "@/api/services/notificationService";
 import { profileService } from "@/api/services/profileService";
 import { removeOnboardingCompleted } from "@/auth/storage";
 import { router } from "expo-router";
@@ -38,6 +39,7 @@ export default function ProfileScreen() {
   };
 
   const handleProfileUpdate = (updatedProfile: UserProfile) => {
+    console.log("updatedProfile", updatedProfile);
     setProfile(updatedProfile);
   };
 
@@ -48,6 +50,14 @@ export default function ProfileScreen() {
       router.replace("/onboarding");
     } catch (error) {
       console.error("Error resetting profile:", error);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await notificationService.sendTestNotification();
+    } catch (error) {
+      console.error("Error sending test notification:", error);
     }
   };
 
@@ -84,12 +94,24 @@ export default function ProfileScreen() {
             onProfileUpdate={handleProfileUpdate}
             showHeader={false}
             compact={true}
-            autoSave={true}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleTestNotification}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>Test Notification</Text>
+              <Text style={styles.settingDescription}>
+                Send a test notification to verify settings
+              </Text>
+            </View>
+            <Text style={styles.signOutText}>→</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingRow}

@@ -22,6 +22,8 @@ export function useAutoSave<T>({
   const [lastSavedData, setLastSavedData] = useState<T>(data);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFocusedRef = useRef(true);
+  const isSavingRef = useRef(false);
+  const hasUnsavedChangesRef = useRef(false);
 
   // Track focus state
   useFocusEffect(
@@ -29,28 +31,35 @@ export function useAutoSave<T>({
       isFocusedRef.current = true;
       return () => {
         isFocusedRef.current = false;
-        if (saveOnBlur && hasUnsavedChanges && !isSaving) {
+        if (
+          saveOnBlur &&
+          hasUnsavedChangesRef.current &&
+          !isSavingRef.current
+        ) {
           // Save immediately when losing focus
           performSave();
         }
       };
-    }, [hasUnsavedChanges, isSaving])
+    }, [performSave, saveOnBlur])
   );
 
   const performSave = useCallback(async () => {
-    if (isSaving || !hasUnsavedChanges) return;
+    if (isSavingRef.current || !hasUnsavedChangesRef.current) return;
 
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
       await onSave(data);
       setLastSavedData(data);
+      hasUnsavedChangesRef.current = false;
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Auto-save failed:", error);
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
-  }, [data, onSave, isSaving, hasUnsavedChanges]);
+  }, [data, onSave]);
 
   // Debounced save
   const scheduleSave = useCallback(() => {
@@ -68,12 +77,13 @@ export function useAutoSave<T>({
   // Check if data has changed
   useEffect(() => {
     const hasChanged = JSON.stringify(data) !== JSON.stringify(lastSavedData);
+    hasUnsavedChangesRef.current = hasChanged;
     setHasUnsavedChanges(hasChanged);
 
     if (hasChanged && isFocusedRef.current) {
       scheduleSave();
     }
-  }, [data, lastSavedData, scheduleSave]);
+  }, [data, lastSavedData]);
 
   // Save on unmount
   useEffect(() => {
@@ -81,11 +91,15 @@ export function useAutoSave<T>({
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
-      if (saveOnUnmount && hasUnsavedChanges && !isSaving) {
+      if (
+        saveOnUnmount &&
+        hasUnsavedChangesRef.current &&
+        !isSavingRef.current
+      ) {
         performSave();
       }
     };
-  }, [saveOnUnmount, hasUnsavedChanges, isSaving, performSave]);
+  }, [saveOnUnmount, performSave]);
 
   return {
     hasUnsavedChanges,

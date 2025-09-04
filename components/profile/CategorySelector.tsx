@@ -34,6 +34,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       onCategoriesChange([...selectedCategories, category]);
     }
   };
+  console.log("selectedCategories", selectedCategories);
 
   return (
     <View style={[styles.categoriesGrid, compact && styles.compactGrid]}>

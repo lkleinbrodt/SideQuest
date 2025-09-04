@@ -127,7 +127,6 @@ export const OnboardingPreferences: React.FC = () => {
         headerTitle="Customize Your Experience"
         compact={false}
         onScrollToBottom={() => setHasScrolledToBottom(true)}
-        autoSave={false}
       />
 
       <View style={styles.buttonContainer}>
