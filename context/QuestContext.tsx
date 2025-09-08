@@ -1,3 +1,4 @@
+import { Quest, QuestStatus } from "@/types/types";
 import React, {
   ReactNode,
   createContext,
@@ -7,7 +8,6 @@ import React, {
   useState,
 } from "react";
 
-import { Quest } from "@/types/types";
 import { questService } from "@/api/services/questService";
 
 // State interface
@@ -174,9 +174,22 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
     feedback?: any
   ) => {
     try {
+      // Import QuestStatus type and validate status
+      const validStatuses = [
+        "potential",
+        "accepted",
+        "completed",
+        "failed",
+        "abandoned",
+        "declined",
+      ];
+      if (!validStatuses.includes(status)) {
+        throw new Error(`Invalid quest status: ${status}`);
+      }
+
       const updatedQuest = await questService.updateQuestStatus(
         questId,
-        status as any,
+        status as QuestStatus,
         feedback
       );
       // Update the board with the single returned quest
