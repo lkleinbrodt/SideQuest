@@ -2,14 +2,11 @@ import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { QuestTemplate, votingService } from "@/api/services/votingService";
 import React, { useEffect, useState } from "react";
 
-import { AnimatedLoading } from "@/components/common/AnimatedLoading";
 import { Card } from "@/components/common/Card";
 import { Colors } from "@/constants/Colors";
 import { Error } from "@/components/common/Error";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 export default function VoteScreen() {
   const [questTemplates, setQuestTemplates] = useState<QuestTemplate[]>([]);

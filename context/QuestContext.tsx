@@ -1,4 +1,3 @@
-import { Quest, QuestStatus } from "@/types/types";
 import React, {
   ReactNode,
   createContext,
@@ -8,6 +7,7 @@ import React, {
   useState,
 } from "react";
 
+import { Quest } from "@/types/types";
 import { questService } from "@/api/services/questService";
 
 // State interface
@@ -189,7 +189,7 @@ export const QuestProvider: React.FC<{ children: ReactNode }> = ({
 
       const updatedQuest = await questService.updateQuestStatus(
         questId,
-        status as QuestStatus,
+        status as any,
         feedback
       );
       // Update the board with the single returned quest

@@ -113,10 +113,7 @@ export default function QuestBoardScreen() {
   if (state.isLoading && state.questBoard.length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AnimatedLoading
-          message="Loading your quest board..."
-          showProgress={true}
-        />
+        <AnimatedLoading showProgress={true} />
       </View>
     );
   }
@@ -124,10 +121,7 @@ export default function QuestBoardScreen() {
   if (refreshing && getPotentialQuests().length === 0) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <AnimatedLoading
-          message="Generating new quests for you"
-          showProgress={true}
-        />
+        <AnimatedLoading showProgress={true} />
       </View>
     );
   }

@@ -8,14 +8,13 @@ import { Layout } from "@/constants/Layout";
 const { width: screenWidth } = Dimensions.get("window");
 
 interface AnimatedLoadingProps {
-  message?: string;
   showProgress?: boolean;
 }
 
 export const AnimatedLoading: React.FC<AnimatedLoadingProps> = ({}) => {
   // Loading messages that cycle through
   const loadingMessages = [
-    "Loading your quest board...",
+    "Generating new quests for you...",
     "Gathering adventures...",
     "Preparing quests...",
     "Almost ready...",
